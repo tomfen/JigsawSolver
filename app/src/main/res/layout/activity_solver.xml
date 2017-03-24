@@ -4,13 +4,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="pt.jigsawsolver.MainMenuActivity">
+    tools:context="pt.jigsawsolver.SolverActivity">
 
-    <ListView
-        android:id="@+id/MainMenuList"
-        android:layout_width="368dp"
-        android:layout_height="503dp"
-        android:dividerHeight="1dp"
-        tools:layout_editor_absoluteX="8dp"
-        tools:layout_editor_absoluteY="8dp" />
 </android.support.constraint.ConstraintLayout>

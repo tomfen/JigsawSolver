@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fit_element">Fit element</string>
+    <string name="solve">Solve</string>
+    <string name="settings">Settings</string>
+</resources>
