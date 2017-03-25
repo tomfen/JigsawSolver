@@ -9,6 +9,7 @@ import android.widget.ListView;
 
 public class MainMenuActivity extends Activity {
     ListView list;
+    static{ System.loadLibrary("opencv_java3"); }
 
     Integer[] labelId = {
             R.string.fit_element,
