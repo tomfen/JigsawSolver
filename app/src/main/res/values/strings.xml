@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">JigsawSolver</string>
+    <string name="file_not_found">File not found</string>
+    <string name="error">Error</string>
 </resources>

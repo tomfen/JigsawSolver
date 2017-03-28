@@ -2,4 +2,6 @@
     <string name="fit_element">Dopasuj element</string>
     <string name="solve">Ułóż</string>
     <string name="settings">Ustawienia</string>
+    <string name="file_not_found">Nie znaleziono pliku</string>
+    <string name="error">Błąd</string>
 </resources>
