@@ -8,12 +8,4 @@
 /captures
 .externalNativeBuild
 
-openCVLibrary320/build/generated/source/aidl/debug/org/opencv/engine/OpenCVEngineInterface.java
-
-openCVLibrary320/build/generated/source/aidl/release/org/opencv/engine/OpenCVEngineInterface.java
-
-openCVLibrary320/build/intermediates/blame/res/androidTest/debug/multi/values.json
-
-openCVLibrary320/build/intermediates/incremental/mergeDebugAndroidTestResources/compile-file-map.properties
-
-openCVLibrary320/build/intermediates/incremental/mergeDebugAndroidTestResources/merger.xml
+openCVLibrary320/build/**
