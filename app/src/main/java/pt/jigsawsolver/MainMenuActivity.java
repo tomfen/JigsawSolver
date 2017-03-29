@@ -17,6 +17,9 @@ public class MainMenuActivity extends Activity {
             R.string.settings,
     };
     Integer[] imageId = {
+            R.drawable.ic_fit,
+            R.drawable.ic_solve,
+            R.drawable.ic_settings,
     };
 
     @Override
