@@ -17,9 +17,6 @@ public class MainMenuActivity extends Activity {
             R.string.settings,
     };
     Integer[] imageId = {
-            R.mipmap.ic_launcher,
-            R.mipmap.ic_launcher,
-            R.mipmap.ic_launcher,
     };
 
     @Override
