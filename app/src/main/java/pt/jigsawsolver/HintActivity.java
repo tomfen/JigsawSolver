@@ -4,9 +4,12 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
+import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -15,10 +18,14 @@ import android.widget.Toast;
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 
+import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
 public class HintActivity extends Activity {
 
@@ -29,6 +36,9 @@ public class HintActivity extends Activity {
     ImageView photoView;
 
     private static int PICK_IMAGE = 1;
+    private static int CAM_REQUEST = 1;
+
+    String date;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +50,24 @@ public class HintActivity extends Activity {
         saveButton = (ImageButton) findViewById(R.id.saveImgButton);
 
         photoView = (ImageView) findViewById(R.id.photoView);
+
+        DateFormat df = new SimpleDateFormat("dd_MM_yyyy-HH:mm");
+        date = df.format(Calendar.getInstance().getTime());
+
+        cameraButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                Intent camera_intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                //File file = getFile();
+                String picturePath = "/storage/emulated/0/DCIM/Camera/" + date + ".jpg";
+                //Uri uriSavedImage=Uri.fromFile(new File("/storage/emulated/0/DCIM/Camera/IMG_20170216_195131_HDR.jpg"));
+                Uri uriSavedImage=Uri.fromFile(new File(picturePath));
+                //camera_intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(file));
+                Log.d("MyPath", picturePath);
+                camera_intent.putExtra(MediaStore.EXTRA_OUTPUT, uriSavedImage);
+                startActivityForResult(camera_intent, CAM_REQUEST);
+            }
+        });
 
         galleryButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -66,6 +94,10 @@ public class HintActivity extends Activity {
                 return;
             }
             try {
+
+                String path = "/storage/emulated/0/DCIM/Camera/" + date + ".jpg";
+                Log.d("MyPath", path);
+
                 Bitmap pictureBitmap= getBitmapFromUri(data.getData());
 
                 Mat picture = new Mat();
