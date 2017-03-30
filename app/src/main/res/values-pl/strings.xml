@@ -4,4 +4,5 @@
     <string name="settings">Ustawienia</string>
     <string name="file_not_found">Nie znaleziono pliku</string>
     <string name="error">Błąd</string>
+    <string name="image_saved">Obraz zapisany</string>
 </resources>

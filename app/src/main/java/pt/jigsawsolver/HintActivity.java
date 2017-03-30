@@ -4,12 +4,12 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.Drawable;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -20,12 +20,8 @@ import org.opencv.core.Mat;
 
 import java.io.File;
 import java.io.FileDescriptor;
-import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 
 public class HintActivity extends Activity {
 
@@ -36,9 +32,9 @@ public class HintActivity extends Activity {
     ImageView photoView;
 
     private static int PICK_IMAGE = 1;
-    private static int CAM_REQUEST = 1;
+    private static int CAM_REQUEST = 2;
 
-    String date;
+    Uri uriSavedImage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,19 +47,16 @@ public class HintActivity extends Activity {
 
         photoView = (ImageView) findViewById(R.id.photoView);
 
-        DateFormat df = new SimpleDateFormat("dd_MM_yyyy-HH:mm");
-        date = df.format(Calendar.getInstance().getTime());
 
         cameraButton.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
                 Intent camera_intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                //File file = getFile();
-                String picturePath = "/storage/emulated/0/DCIM/Camera/" + date + ".jpg";
-                //Uri uriSavedImage=Uri.fromFile(new File("/storage/emulated/0/DCIM/Camera/IMG_20170216_195131_HDR.jpg"));
-                Uri uriSavedImage=Uri.fromFile(new File(picturePath));
-                //camera_intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(file));
-                Log.d("MyPath", picturePath);
+
+                String picturePath = Environment.getExternalStorageDirectory() + "/pic.jpg";
+
+                uriSavedImage = Uri.fromFile(new File(picturePath));
+
                 camera_intent.putExtra(MediaStore.EXTRA_OUTPUT, uriSavedImage);
                 startActivityForResult(camera_intent, CAM_REQUEST);
             }
@@ -83,22 +76,49 @@ public class HintActivity extends Activity {
                 startActivityForResult(chooserIntent, PICK_IMAGE);
             }
         });
+
+        saveButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+
+                try {
+                    BitmapDrawable bd = (BitmapDrawable) photoView.getDrawable();
+                    Bitmap bm = bd.getBitmap();
+
+                    FileOutputStream outStream = null;
+                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/savedimg.jpeg";
+                    File f = new File(filepath);
+                    outStream = new FileOutputStream(f);
+                    bm.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
+                    outStream.flush();
+                    outStream.close();
+                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
+
+                } catch (Exception e) {
+                    Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
+                }
+            }
+        });
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_IMAGE && resultCode == Activity.RESULT_OK) {
-            if (data == null) {
-                //Display an error
-                return;
-            }
             try {
+                Bitmap pictureBitmap = getBitmapFromUri(data.getData());
 
-                String path = "/storage/emulated/0/DCIM/Camera/" + date + ".jpg";
-                Log.d("MyPath", path);
+                Mat picture = new Mat();
+                Utils.bitmapToMat(pictureBitmap, picture);
 
-                Bitmap pictureBitmap= getBitmapFromUri(data.getData());
+                photoView.setImageBitmap(pictureBitmap);
+
+            } catch (Exception e){
+                Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
+            }
+        } else if (requestCode == CAM_REQUEST && resultCode == Activity.RESULT_OK) {
+
+            try {
+                Bitmap pictureBitmap = getBitmapFromUri(uriSavedImage);
 
                 Mat picture = new Mat();
                 Utils.bitmapToMat(pictureBitmap, picture);
@@ -112,11 +132,10 @@ public class HintActivity extends Activity {
     }
 
     private Bitmap getBitmapFromUri(Uri uri) throws IOException {
-        ParcelFileDescriptor parcelFileDescriptor =
-                getContentResolver().openFileDescriptor(uri, "r");
-        FileDescriptor fileDescriptor = parcelFileDescriptor.getFileDescriptor();
+        ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
+        FileDescriptor fileDescriptor = pfd.getFileDescriptor();
         Bitmap image = BitmapFactory.decodeFileDescriptor(fileDescriptor);
-        parcelFileDescriptor.close();
+        pfd.close();
         return image;
     }
 
