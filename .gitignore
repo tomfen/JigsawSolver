@@ -9,3 +9,7 @@
 .externalNativeBuild
 
 openCVLibrary320/build/**
+
+.idea/misc.xml
+
+.idea/modules.xml
