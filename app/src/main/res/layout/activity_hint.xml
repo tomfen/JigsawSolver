@@ -22,6 +22,10 @@
             android:layout_weight="40"
             android:background="#dddddd">
 
+            <SurfaceView
+                android:id="@+id/livePreview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
         </FrameLayout>
 
         <LinearLayout

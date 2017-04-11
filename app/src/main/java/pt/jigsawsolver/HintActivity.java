@@ -5,11 +5,14 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
+import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -30,11 +33,16 @@ public class HintActivity extends Activity {
     ImageButton saveButton;
 
     ImageView photoView;
+    SurfaceView livePreview;
+    SurfaceHolder holder;
+
+    Camera camera;
 
     private static int PICK_IMAGE = 1;
     private static int CAM_REQUEST = 2;
-
+    Boolean cameraStopped = false;
     Uri uriSavedImage;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,7 +54,43 @@ public class HintActivity extends Activity {
         saveButton = (ImageButton) findViewById(R.id.saveImgButton);
 
         photoView = (ImageView) findViewById(R.id.photoView);
+        livePreview = (SurfaceView) findViewById(R.id.livePreview);
+        holder = livePreview.getHolder();
+        holder.addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
 
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+                camera = Camera.open();
+                try {
+                    camera.setPreviewDisplay(holder);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                camera.startPreview();
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {
+
+            }
+
+        });
+
+        livePreview.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                if (!cameraStopped) {
+                    camera.stopPreview();
+                }else{
+                    camera.startPreview();
+                }
+                cameraStopped = !cameraStopped;
+            }
+        });
 
         cameraButton.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -98,6 +142,17 @@ public class HintActivity extends Activity {
                 }
             }
         });
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();  // Always call the superclass method first
+        // Release the Camera because we don't need it when paused
+        // and other activities might need to use it.
+        if (camera != null) {
+            camera.release();
+            camera = null;
+        }
     }
 
     @Override
