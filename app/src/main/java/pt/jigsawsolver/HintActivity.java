@@ -11,8 +11,10 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -37,12 +39,16 @@ public class HintActivity extends Activity {
     SurfaceHolder holder;
 
     Camera camera;
+    private Camera.PictureCallback mPicture;
 
     private static int PICK_IMAGE = 1;
     private static int CAM_REQUEST = 2;
+
     Boolean cameraStopped = false;
     Uri uriSavedImage;
 
+    Mat element;
+    Mat picture;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +61,19 @@ public class HintActivity extends Activity {
 
         photoView = (ImageView) findViewById(R.id.photoView);
         livePreview = (SurfaceView) findViewById(R.id.livePreview);
+
+        if (camera == null) {
+            camera = Camera.open();
+        }
+                try {
+                    camera.setPreviewDisplay(holder);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
+                }
+
+                camera.startPreview();
+
         holder = livePreview.getHolder();
         holder.addCallback(new SurfaceHolder.Callback() {
             @Override
@@ -64,7 +83,9 @@ public class HintActivity extends Activity {
 
             @Override
             public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-                camera = Camera.open();
+                if (camera == null) {
+                    camera = Camera.open();
+                }
                 try {
                     camera.setPreviewDisplay(holder);
                 } catch (IOException e) {
@@ -79,6 +100,33 @@ public class HintActivity extends Activity {
             }
 
         });
+
+        mPicture = new Camera.PictureCallback() {
+
+            @Override
+            public void onPictureTaken(byte[] data, Camera camera) {
+
+                try {
+                    Bitmap elementBitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+
+                    element = new Mat();
+                    Utils.bitmapToMat(elementBitmap, element);
+
+                    FileOutputStream outStream = null;
+                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/savedimg.jpeg";
+                    File f = new File(filepath);
+                    outStream = new FileOutputStream(f);
+                    elementBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
+                    outStream.flush();
+                    outStream.close();
+                    // photoView.setImageBitmap(bmp);
+                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
+
+                } catch (Exception e) {
+                    Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
+                }
+            }
+        };
 
         livePreview.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -126,13 +174,16 @@ public class HintActivity extends Activity {
 
                 try {
                     BitmapDrawable bd = (BitmapDrawable) photoView.getDrawable();
-                    Bitmap bm = bd.getBitmap();
+                    Bitmap pictureBitmap = bd.getBitmap();
 
+                    picture = new Mat();
+                    Utils.bitmapToMat(pictureBitmap, picture);
+                    
                     FileOutputStream outStream = null;
                     String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/savedimg.jpeg";
                     File f = new File(filepath);
                     outStream = new FileOutputStream(f);
-                    bm.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
+                    pictureBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
                     outStream.flush();
                     outStream.close();
                     Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
