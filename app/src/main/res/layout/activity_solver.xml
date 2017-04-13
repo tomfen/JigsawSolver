@@ -29,7 +29,12 @@
                 android:layout_weight="10"
                 android:padding="10dp">
 
-                <SurfaceView
+                <!---->
+                <!--<pt.jigsawsolver.Tmp-->
+                <!--android:layout_width="wrap_content"-->
+                <!--android:layout_height="wrap_content" />-->
+
+                <pt.jigsawsolver.SolverSurfaceView
                 android:id="@+id/livePreviewSolver"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"/>

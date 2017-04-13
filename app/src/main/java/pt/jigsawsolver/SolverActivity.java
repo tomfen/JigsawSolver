@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
@@ -40,7 +39,7 @@ public class SolverActivity extends Activity {
     ImageButton saveButtonSolved;
 
     ImageView photoView;
-    SurfaceView livePreview;
+    SolverSurfaceView livePreview;
     SurfaceHolder holder;
     private Camera.PictureCallback mPicture;
 
@@ -63,14 +62,14 @@ public class SolverActivity extends Activity {
         saveButtonSolved = (ImageButton) findViewById(R.id.saveImgButtonSolved);
 
         photoView = (ImageView) findViewById(R.id.photoViewSolver);
-        livePreview = (SurfaceView) findViewById(R.id.livePreviewSolver);
+        livePreview = (SolverSurfaceView) findViewById(R.id.livePreviewSolver);
         holder = livePreview.getHolder();
 
         //Camera
         holder.addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
-               Canvas canvas = holder.lockCanvas();
+              // Canvas canvas = holder.lockCanvas();
 
             }
 
@@ -131,13 +130,16 @@ public class SolverActivity extends Activity {
         livePreview.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                if (!cameraStopped) {
-                    camera.stopPreview();
-                    camera.takePicture(null, null, mPicture);
-                }else{
-                    camera.startPreview();
+
+                if (camera != null) {
+                    if (!cameraStopped) {
+                        camera.stopPreview();
+                        camera.takePicture(null, null, mPicture);
+                    } else {
+                        camera.startPreview();
+                    }
+                    cameraStopped = !cameraStopped;
                 }
-                cameraStopped = !cameraStopped;
             }
         });
 
@@ -226,21 +228,7 @@ public class SolverActivity extends Activity {
                 Mat picture = new Mat();
                 Utils.bitmapToMat(pictureBitmap, picture);
 
-              //  livePreview.setImageBitmap(pictureBitmap);
-                Canvas canvas = null;
-                try {
-                    canvas = holder.lockCanvas(null);
-                        canvas.drawColor(Color.WHITE);
-                        canvas.drawBitmap(pictureBitmap, 10, 10, new Paint());
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
-                } finally {
-                    if (canvas != null) {
-                        holder.unlockCanvasAndPost(canvas);
-                    }
-                }
+                livePreview.setImage(pictureBitmap);
 
             } catch (Exception e){
                 Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
@@ -268,6 +256,17 @@ public class SolverActivity extends Activity {
         Bitmap image = BitmapFactory.decodeFileDescriptor(fileDescriptor);
         pfd.close();
         return image;
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();  // Always call the superclass method first
+        // Release the Camera because we don't need it when paused
+        // and other activities might need to use it.
+        if (camera != null) {
+            camera.release();
+            camera = null;
+        }
     }
 
 }
