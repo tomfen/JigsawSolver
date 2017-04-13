@@ -19,14 +19,14 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class JigsawFitter {
-    public static Mat find(Mat img_object1, Mat img_scene1) {
+    public static Mat find(Mat element, Mat template) {
         Mat img_object = new Mat();
         Mat img_scene = new Mat();
 
-        Imgproc.cvtColor(img_object1, img_object, Imgproc.COLOR_RGBA2RGB, 1);
-        Imgproc.cvtColor(img_scene1, img_scene, Imgproc.COLOR_RGBA2RGB, 1);
+        Imgproc.cvtColor(element, img_object, Imgproc.COLOR_RGBA2RGB, 1);
+        Imgproc.cvtColor(template, img_scene, Imgproc.COLOR_RGBA2RGB, 1);
 
-        FeatureDetector detector = FeatureDetector.create(FeatureDetector.DYNAMIC_ORB); //SURF i SIFT nie działa
+        FeatureDetector detector = FeatureDetector.create(FeatureDetector.ORB); //SURF i SIFT nie działa
 
         MatOfKeyPoint keypoints_object = new MatOfKeyPoint();
         MatOfKeyPoint keypoints_scene  = new MatOfKeyPoint();
@@ -57,21 +57,21 @@ public class JigsawFitter {
             if(dist > max_dist) max_dist = dist;
         }
 
-        System.out.println("-- Max dist : " + max_dist);
-        System.out.println("-- Min dist : " + min_dist);
+        //System.out.println("-- Max dist : " + max_dist);
+        //System.out.println("-- Min dist : " + min_dist);
 
         LinkedList<DMatch> good_matches = new LinkedList<DMatch>();
         MatOfDMatch gm = new MatOfDMatch();
 
         for(int i = 0; i < descriptor_object.rows(); i++){
-            if(matchesList.get(i).distance <= 3*min_dist){
+            if(matchesList.get(i).distance <= 2*min_dist){
                 good_matches.addLast(matchesList.get(i));
             }
         }
 
         gm.fromList(good_matches);
 
-        Mat img_matches = new Mat();
+        /*Mat img_matches = new Mat();
 
         Features2d.drawMatches(
                 img_object,
@@ -83,7 +83,7 @@ public class JigsawFitter {
                 Scalar.all(-1),
                 Scalar.all(-1),
                 new MatOfByte(),
-                Features2d.NOT_DRAW_SINGLE_POINTS | Features2d.DRAW_RICH_KEYPOINTS);
+                Features2d.NOT_DRAW_SINGLE_POINTS | Features2d.DRAW_RICH_KEYPOINTS);*/
 
         LinkedList<Point> objList = new LinkedList<Point>();
         LinkedList<Point> sceneList = new LinkedList<Point>();
@@ -117,22 +117,24 @@ public class JigsawFitter {
             Core.perspectiveTransform(obj_corners, scene_corners, homography);
 
             //offset the rectangle to the template
-            int offset = img_object.cols();
+            /*int offset = img_object.cols();
             for (int i = 0; i < 4; i++) {
                 double[] pt = scene_corners.get(i, 0);
                 pt[0] += offset;
                 scene_corners.put(i, 0, pt);
-            }
+            }*/
 
             Scalar color = new Scalar(0, 255, 0);
 
-            Imgproc.line(img_matches, new Point(scene_corners.get(0,0)), new Point(scene_corners.get(1,0)), color, 4);
-            Imgproc.line(img_matches, new Point(scene_corners.get(1,0)), new Point(scene_corners.get(2,0)), color, 4);
-            Imgproc.line(img_matches, new Point(scene_corners.get(2,0)), new Point(scene_corners.get(3,0)), color, 4);
-            Imgproc.line(img_matches, new Point(scene_corners.get(3,0)), new Point(scene_corners.get(0,0)), color, 4);
+            Imgproc.line(img_scene, new Point(scene_corners.get(0,0)), new Point(scene_corners.get(1,0)), color, 4);
+            Imgproc.line(img_scene, new Point(scene_corners.get(1,0)), new Point(scene_corners.get(2,0)), color, 4);
+            Imgproc.line(img_scene, new Point(scene_corners.get(2,0)), new Point(scene_corners.get(3,0)), color, 4);
+            Imgproc.line(img_scene, new Point(scene_corners.get(3,0)), new Point(scene_corners.get(0,0)), color, 4);
+
+            return img_scene;
+
         } catch (Exception e) {
-            e.printStackTrace();
+            return null;
         }
-        return img_matches;
     }
 }

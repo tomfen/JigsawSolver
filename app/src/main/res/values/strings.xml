@@ -6,4 +6,7 @@
     <string name="fit_element">Fit element</string>
     <string name="settings">Settings</string>
     <string name="solve">Solve</string>
+    <string name="camera_error">Camera error</string>
+    <string name="template_not_loaded">Template not loaded</string>
+    <string name="piece_not_found">Piece not found</string>
 </resources>

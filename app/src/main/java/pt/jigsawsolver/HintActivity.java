@@ -11,10 +11,8 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
-import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.TextureView;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -27,6 +25,7 @@ import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 public class HintActivity extends Activity {
 
@@ -40,6 +39,7 @@ public class HintActivity extends Activity {
 
     Camera camera;
     private Camera.PictureCallback mPicture;
+    private Camera.AutoFocusCallback mFocus;
 
     private static int PICK_IMAGE = 1;
     private static int CAM_REQUEST = 2;
@@ -47,8 +47,8 @@ public class HintActivity extends Activity {
     Boolean cameraStopped = false;
     Uri uriSavedImage;
 
-    Mat element;
-    Mat picture;
+    Mat element = null;
+    Mat picture = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,18 +62,6 @@ public class HintActivity extends Activity {
         photoView = (ImageView) findViewById(R.id.photoView);
         livePreview = (SurfaceView) findViewById(R.id.livePreview);
 
-        if (camera == null) {
-            camera = Camera.open();
-        }
-                try {
-                    camera.setPreviewDisplay(holder);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
-                }
-
-                camera.startPreview();
-
         holder = livePreview.getHolder();
         holder.addCallback(new SurfaceHolder.Callback() {
             @Override
@@ -84,14 +72,21 @@ public class HintActivity extends Activity {
             @Override
             public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
                 if (camera == null) {
-                    camera = Camera.open();
+                    try {
+                        camera = Camera.open();
+                        Camera.Parameters params = camera.getParameters();
+                        List<String> focus = params.getSupportedFocusModes();
+                        if (focus.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                            params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+                            camera.setParameters(params);
+                        }
+                        camera.setDisplayOrientation(90);
+                        camera.setPreviewDisplay(holder);
+                        camera.startPreview();
+                    } catch (Exception e) {
+                        Toast.makeText(getApplicationContext(), R.string.camera_error, Toast.LENGTH_LONG).show();
+                    }
                 }
-                try {
-                    camera.setPreviewDisplay(holder);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                camera.startPreview();
             }
 
             @Override
@@ -106,21 +101,23 @@ public class HintActivity extends Activity {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
 
+                if(picture == null) return;
+
                 try {
                     Bitmap elementBitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
 
                     element = new Mat();
                     Utils.bitmapToMat(elementBitmap, element);
 
-                    FileOutputStream outStream = null;
-                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/savedimg.jpeg";
-                    File f = new File(filepath);
-                    outStream = new FileOutputStream(f);
-                    elementBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
-                    outStream.flush();
-                    outStream.close();
-                    // photoView.setImageBitmap(bmp);
-                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
+                    Mat result = JigsawFitter.find(element, picture);
+                    if (result != null) {
+                        Bitmap resultBmp = Bitmap.createBitmap(result.cols(), result.rows(), Bitmap.Config.RGB_565);
+                        Utils.matToBitmap(result, resultBmp);
+
+                        photoView.setImageBitmap(resultBmp);
+                    } else {
+                        Toast.makeText(getApplicationContext(), R.string.piece_not_found, Toast.LENGTH_LONG).show();
+                    }
 
                 } catch (Exception e) {
                     Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
@@ -128,15 +125,29 @@ public class HintActivity extends Activity {
             }
         };
 
+        mFocus = new Camera.AutoFocusCallback() {
+
+            @Override
+            public void onAutoFocus(boolean success, Camera camera) {
+                if (success) {
+                    camera.takePicture(null, null, mPicture);
+                }
+            }
+        };
+
         livePreview.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                if (!cameraStopped) {
-                    camera.stopPreview();
-                }else{
-                    camera.startPreview();
+                if (picture == null) {
+                    Toast.makeText(getApplicationContext(), R.string.template_not_loaded, Toast.LENGTH_LONG).show();
+                } else if (camera != null) {
+                    if (!cameraStopped) {
+                        camera.autoFocus(mFocus);
+                    } else {
+                        camera.startPreview();
+                    }
+                    cameraStopped = !cameraStopped;
                 }
-                cameraStopped = !cameraStopped;
             }
         });
 
@@ -176,9 +187,6 @@ public class HintActivity extends Activity {
                     BitmapDrawable bd = (BitmapDrawable) photoView.getDrawable();
                     Bitmap pictureBitmap = bd.getBitmap();
 
-                    picture = new Mat();
-                    Utils.bitmapToMat(pictureBitmap, picture);
-                    
                     FileOutputStream outStream = null;
                     String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/savedimg.jpeg";
                     File f = new File(filepath);
@@ -213,7 +221,7 @@ public class HintActivity extends Activity {
             try {
                 Bitmap pictureBitmap = getBitmapFromUri(data.getData());
 
-                Mat picture = new Mat();
+                picture = new Mat();
                 Utils.bitmapToMat(pictureBitmap, picture);
 
                 photoView.setImageBitmap(pictureBitmap);
@@ -226,7 +234,7 @@ public class HintActivity extends Activity {
             try {
                 Bitmap pictureBitmap = getBitmapFromUri(uriSavedImage);
 
-                Mat picture = new Mat();
+                picture = new Mat();
                 Utils.bitmapToMat(pictureBitmap, picture);
 
                 photoView.setImageBitmap(pictureBitmap);

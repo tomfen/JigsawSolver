@@ -5,4 +5,7 @@
     <string name="file_not_found">Nie znaleziono pliku</string>
     <string name="error">Błąd</string>
     <string name="image_saved">Obraz zapisany</string>
+    <string name="camera_error">Błąd kamery</string>
+    <string name="template_not_loaded">Nie wczytano wzoru</string>
+    <string name="piece_not_found">Nie znaleziono elementu</string>
 </resources>
