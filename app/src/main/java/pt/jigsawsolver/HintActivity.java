@@ -14,17 +14,22 @@ import android.provider.MediaStore;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
 
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class HintActivity extends Activity {
@@ -32,6 +37,7 @@ public class HintActivity extends Activity {
     ImageButton cameraButton;
     ImageButton galleryButton;
     ImageButton saveButton;
+    Button contourButton;
 
     ImageView photoView;
     SurfaceView livePreview;
@@ -58,6 +64,7 @@ public class HintActivity extends Activity {
         cameraButton = (ImageButton) findViewById(R.id.cameraButton);
         galleryButton = (ImageButton) findViewById(R.id.galleryButton);
         saveButton = (ImageButton) findViewById(R.id.saveImgButton);
+        contourButton = (Button) findViewById(R.id.contourButton);
 
         photoView = (ImageView) findViewById(R.id.photoView);
         livePreview = (SurfaceView) findViewById(R.id.livePreview);
@@ -201,6 +208,21 @@ public class HintActivity extends Activity {
                 }
             }
         });
+
+        contourButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+
+                try {
+                    photoView.buildDrawingCache();
+                    Bitmap bmap = photoView.getDrawingCache();
+                    color_picture(photoView, bmap);
+
+                } catch (Exception e) {
+                    Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
     }
 
     @Override
@@ -251,6 +273,34 @@ public class HintActivity extends Activity {
         Bitmap image = BitmapFactory.decodeFileDescriptor(fileDescriptor);
         pfd.close();
         return image;
+    }
+
+    public static void color_picture(ImageView iv, Bitmap bmp) throws Exception {
+        Mat src = new Mat();
+        Utils.bitmapToMat(bmp, src);
+        Mat gray = new Mat();
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2GRAY);
+
+        Imgproc.Canny(gray, gray, 50, 200);
+        List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+        Mat hierarchy = new Mat();
+// find contours:
+        Imgproc.findContours(gray, contours, hierarchy, Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE);
+        for (int contourIdx = 0; contourIdx < contours.size(); contourIdx++) {
+            Imgproc.drawContours(src, contours, contourIdx, new Scalar(0, 0, 255), -1);
+        }
+// create a blank temp bitmap:
+        Bitmap tempBmp1 = Bitmap.createBitmap(bmp.getWidth(), bmp.getHeight(),
+                bmp.getConfig());
+
+        Mat tempMat = new Mat();
+        tempMat = gray;
+
+        Imgproc.cvtColor(gray, src, Imgproc.COLOR_GRAY2RGBA, 4);
+        //Imgproc.cvtColor(tempBmp1, tempBmp1, Imgproc.COLOR_GRAY2RGBA, 4);
+
+        Utils.matToBitmap(src, tempBmp1);
+        iv.setImageBitmap(tempBmp1);
     }
 
 }
