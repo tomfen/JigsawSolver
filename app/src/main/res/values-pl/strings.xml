@@ -8,4 +8,6 @@
     <string name="camera_error">Błąd kamery</string>
     <string name="template_not_loaded">Nie wczytano wzoru</string>
     <string name="piece_not_found">Nie znaleziono elementu</string>
+    <string name="file_name">Nazwa pliku</string>
+    <string name="cancel">Anuluj</string>
 </resources>

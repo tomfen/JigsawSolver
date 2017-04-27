@@ -1,6 +1,8 @@
 package pt.jigsawsolver;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -11,10 +13,12 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
+import android.text.InputType;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -32,6 +36,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("deprecation")
 public class HintActivity extends Activity {
 
     ImageButton cameraButton;
@@ -189,23 +194,47 @@ public class HintActivity extends Activity {
 
         saveButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
+                AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(HintActivity.this);
 
-                try {
-                    BitmapDrawable bd = (BitmapDrawable) photoView.getDrawable();
-                    Bitmap pictureBitmap = bd.getBitmap();
+                alertDialogBuilder.setTitle(R.string.file_name);
 
-                    FileOutputStream outStream = null;
-                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/savedimg.jpeg";
-                    File f = new File(filepath);
-                    outStream = new FileOutputStream(f);
-                    pictureBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
-                    outStream.flush();
-                    outStream.close();
-                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
+                final EditText input = new EditText(HintActivity.this);
+                input.setInputType(InputType.TYPE_CLASS_TEXT);
+                input.setText("img");
+                alertDialogBuilder.setView(input);
 
-                } catch (Exception e) {
-                    Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
-                }
+                alertDialogBuilder
+                        .setCancelable(true)
+                        .setPositiveButton(R.string.ok,new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog,int id) {
+                                try {
+                                    BitmapDrawable bd = (BitmapDrawable) photoView.getDrawable();
+                                    Bitmap pictureBitmap = bd.getBitmap();
+
+                                    FileOutputStream outStream = null;
+                                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath()
+                                            + "/" + input.getText().toString() + ".jpeg";
+                                    File f = new File(filepath);
+                                    outStream = new FileOutputStream(f);
+                                    pictureBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
+                                    outStream.flush();
+                                    outStream.close();
+                                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
+
+                                } catch (Exception e) {
+                                    Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
+                                }
+                            }
+                        })
+                        .setNegativeButton(R.string.cancel,new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog,int id) {
+                                dialog.cancel();
+                            }
+                        });
+
+                AlertDialog alertDialog = alertDialogBuilder.create();
+                alertDialog.setCanceledOnTouchOutside(false);
+                alertDialog.show();
             }
         });
 

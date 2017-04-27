@@ -9,4 +9,7 @@
     <string name="camera_error">Camera error</string>
     <string name="template_not_loaded">Template not loaded</string>
     <string name="piece_not_found">Piece not found</string>
+    <string name="file_name">File name</string>
+    <string name="ok" translatable="false">Ok</string>
+    <string name="cancel">Cancel</string>
 </resources>
