@@ -21,10 +21,82 @@ public class JigsawSolver {
 	
 	List<Element> elements = new ArrayList<>();
 	
+	private class Edge {
+		MatOfPoint curve;
+		MatOfPoint curveNorm;
+		Element parent;
+		
+		Edge(MatOfPoint curve, Element parent) {
+			this.parent = parent;
+			this.curve = curve;
+			this.curveNorm = normalizedCurve(curve);
+		}
+		
+		public Point getStartPoint() {
+			return new Point(curve.get(0, 0));
+		}
+		
+		private MatOfPoint normalizedCurve(MatOfPoint c) {
+			// clone workaround
+			Mat norm1 = c.clone();
+			MatOfPoint norm = new MatOfPoint();
+			norm1.convertTo(norm, CvType.CV_32S);
+			
+			Point p1 = new Point(norm.get(0, 0));
+			Point p2 = new Point(norm.get(norm.rows()-1, 0));
+			
+			double dist = Math.sqrt(distSq(p1, p2));
+			double cos = (p2.x - p1.x) / dist;
+			double sin = (p2.y - p1.y) / dist;
+			
+			for(int i = 0; i<norm.rows(); i++) {
+				double[] pt = norm.get(i, 0);
+				double x = pt[0];
+				double y = pt[1];
+				
+				pt[0] =  cos*(x-p1.x)+sin*(y-p1.y);
+				pt[1] = -sin*(x-p1.x)+cos*(y-p1.y);
+				
+				norm.put(i, 0, pt);
+			}
+			return norm;
+		}
+		
+		public boolean isFlat() {
+			Rect rect = Imgproc.boundingRect(curveNorm);
+			return ((double)rect.height/(double)rect.width) < 0.05;
+		}
+		
+		public double distance(Edge e) {
+			if(this.isFlat() || e.isFlat() || this == e)
+				return Double.MAX_VALUE;
+			
+			MatOfPoint temp1 = new MatOfPoint();
+			this.curveNorm.copyTo(temp1);
+
+			MatOfPoint temp2 = new MatOfPoint();
+			e.curveNorm.copyTo(temp2);
+			
+			Point end = new Point(temp1.get(temp1.rows()-1, 0));
+			for(int i = 0; i < temp2.rows(); i++) {
+				double[] t = temp2.get(i, 0);
+				double x = -t[0]+end.x;
+				double y = -t[1]+end.y;
+				
+				t[0] = x;
+				t[1] = y;
+				temp2.put(i, 0, t);
+			}
+			temp1.push_back(temp2);
+			
+			return Imgproc.contourArea(temp1);
+		}
+	}
+	
 	private class Element {
 		int id;
 		Mat img;
-		List<MatOfPoint> edges;
+		List<Edge> edges;
 		
 		Element(int id, Mat img, MatOfPoint contour) {
 			this.id = id;
@@ -33,19 +105,17 @@ public class JigsawSolver {
 		}
 		
 		boolean isBorder() {
-			for(MatOfPoint edge : edges) {
-				if(isFlat(edge)) return true;
+			for (Edge e : edges) {
+				if(e.isFlat()) return true;
 			}
 			return false;
 		}
 		
 		boolean isCorner() {
-			int flatEdges = 0;
-			for(MatOfPoint edge : edges) {
-				if(isFlat(edge)) {
-					flatEdges++;
-					if(flatEdges>=2) return true;
-				}
+			int flat = 0;
+			for (Edge e : edges) {
+				if(e.isFlat()) flat++;
+				if(flat>=2) return true;
 			}
 			return false;
 		}
@@ -54,44 +124,42 @@ public class JigsawSolver {
 			Mat ret = this.img.clone();
 			
 			Imgproc.putText(ret, String.valueOf(id), new Point(0,23), Core.FONT_HERSHEY_DUPLEX, 1., Scalar.all(255));
-			String type = "Inside";
+			String type = "Inner";
 			if (this.isBorder()) type = "Border";
 			if (this.isCorner()) type = "Corner";
-			Imgproc.putText(ret, type, new Point(0,46), Core.FONT_HERSHEY_DUPLEX, 1., Scalar.all(255));
+			Imgproc.putText(ret, type, new Point(0,48), Core.FONT_HERSHEY_DUPLEX, 1., Scalar.all(255));
 			
-			Imgproc.polylines(ret, edges.subList(0, 1), false, new Scalar(255,0,0), 2, 4, 0);
-			Imgproc.polylines(ret, edges.subList(1, 2), false, new Scalar(0,0,255), 2, 4, 0);
-			Imgproc.polylines(ret, edges.subList(2, 3), false, new Scalar(0,255,0), 2, 4, 0);
-			Imgproc.polylines(ret, edges.subList(3, 4), false, new Scalar(0,255,255), 2, 8, 0);
+			int i = 0;
+			for(Edge e : edges) {
+				List<MatOfPoint> l = new ArrayList<>();
+				l.add(e.curve);
+				Scalar color = e.isFlat()? new Scalar(0,255,0) : new Scalar(255,0,0);
+				Imgproc.polylines(ret, l, false, color, 1);
+				Imgproc.drawMarker(ret, e.getStartPoint(), new Scalar(0,0,255), Imgproc.MARKER_TILTED_CROSS, 9, 1, 8);
+			}
 			
 			return ret;
 		}
 		
-		private boolean isFlat(MatOfPoint edge) {
-			double area = Imgproc.contourArea(edge);
-			Point p1 = new Point(edge.get(0, 0));
-			Point p2 = new Point(edge.get(edge.rows()-1, 0));
-			double dist = Math.sqrt(distSq(p1, p2));
-			return area/dist < 1.;
-		}
-		
-		private List<MatOfPoint> getEdges(MatOfPoint cont) {
+		private List<Edge> getEdges(MatOfPoint cont) {
 			
+			MatOfPoint2f points1 = new MatOfPoint2f();
 			MatOfPoint2f points = new MatOfPoint2f();
-			cont.convertTo(points, CvType.CV_32F);
+			cont.convertTo(points1, CvType.CV_32F);
+			Imgproc.approxPolyDP(points1, points, 0.15, true);
 			int[] cornerIds = getCornerIds(points);
 
-			List<MatOfPoint> l = new ArrayList<>(4);
+			List<Edge> l = new ArrayList<>(4);
 			
 			l.add( cut(points, cornerIds[0], cornerIds[1]) );
 			l.add( cut(points, cornerIds[1], cornerIds[2]) );
 			l.add( cut(points, cornerIds[2], cornerIds[3]) );
 			l.add( cut(points, cornerIds[3], cornerIds[0]) );
-			
+
 			return l;
 		}
 		
-		private MatOfPoint cut(MatOfPoint2f cont, int start, int end) {
+		private Edge cut(MatOfPoint2f cont, int start, int end) {
 			Mat ret;
 			if (start < end) {
 				ret = cont.submat(start, end+1, 0, 1);
@@ -103,7 +171,7 @@ public class JigsawSolver {
 			
 			MatOfPoint ret1 = new MatOfPoint();
 			ret.convertTo(ret1, CvType.CV_32S);
-			return ret1;
+			return new Edge(ret1, this);
 		}
 		
 		private int[] getCornerIds(MatOfPoint2f cont) {
@@ -131,9 +199,11 @@ public class JigsawSolver {
 			return corners;
 		}
 		
-		private double distSq(Point a, Point b) {
-			return (a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y);
-		}
+		
+	}
+	
+	private static double distSq(Point a, Point b) {
+		return (a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y);
 	}
 	
 	public void loadImage(Mat scene) {
@@ -145,7 +215,7 @@ public class JigsawSolver {
 		
 	    List<MatOfPoint> contours = new ArrayList<>();
 		Mat hierarchy = new Mat();
-		Imgproc.findContours(gray, contours, hierarchy, Imgproc.RETR_EXTERNAL , Imgproc.CHAIN_APPROX_SIMPLE);
+		Imgproc.findContours(gray, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
 	    // Crop each element
 		int id = 0;
@@ -177,4 +247,6 @@ public class JigsawSolver {
 		}
 	}
 	
+	public void solve() {
+	}
 }
