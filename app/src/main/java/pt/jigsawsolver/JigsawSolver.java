@@ -1,5 +1,7 @@
 package pt.jigsawsolver;
 
+package jigsaw;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,11 +27,14 @@ public class JigsawSolver {
 		MatOfPoint curve;
 		MatOfPoint curveNorm;
 		Element parent;
+		Edge connected;
+		int no;
 		
-		Edge(MatOfPoint curve, Element parent) {
+		Edge(MatOfPoint curve, Element parent, int no) {
 			this.parent = parent;
 			this.curve = curve;
 			this.curveNorm = normalizedCurve(curve);
+			this.no = no;
 		}
 		
 		public Point getStartPoint() {
@@ -67,6 +72,11 @@ public class JigsawSolver {
 			return ((double)rect.height/(double)rect.width) < 0.05;
 		}
 		
+		public void merge(Edge e) {
+			this.connected = e;
+			e.connected = this;
+		}
+		
 		public double distance(Edge e) {
 			if(this.isFlat() || e.isFlat() || this == e)
 				return Double.MAX_VALUE;
@@ -91,33 +101,72 @@ public class JigsawSolver {
 			
 			return Imgproc.contourArea(temp1);
 		}
+		
+		Edge next() {
+			return parent.edges.get((no+1)%4);
+		}
+		
+		Edge prev() {
+			return parent.edges.get(no==0? 3 : no-1);
+		}
+		
+		
 	}
 	
 	private class Element {
 		int id;
 		Mat img;
 		List<Edge> edges;
+		private boolean corner = false;
+		private boolean border = false;
 		
 		Element(int id, Mat img, MatOfPoint contour) {
 			this.id = id;
 			this.img = img;
 			this.edges = getEdges(contour);
+			
+			int flat = 0;
+			for (Edge e : edges)
+				if(e.isFlat()) flat++;
+			
+			if(flat==1)
+				border = true;
+			else if(flat==2)
+				corner = true;
+			
 		}
 		
 		boolean isBorder() {
-			for (Edge e : edges) {
-				if(e.isFlat()) return true;
-			}
-			return false;
+			return this.border;
 		}
 		
 		boolean isCorner() {
-			int flat = 0;
-			for (Edge e : edges) {
-				if(e.isFlat()) flat++;
-				if(flat>=2) return true;
+			return this.corner;
+		}
+		
+		Edge[] flatNeighbours() {
+			if(!isBorder() && !isCorner())
+				return null;
+			
+			Edge[] ret = new Edge[2];
+			
+			if(isBorder()) {
+				Edge e = edges.get(0);
+				while(!e.isFlat())
+					e = e.next();
+				ret[0] = e.prev();
+				ret[1] = e.next();
+			} else if(isCorner()) {
+				Edge e = edges.get(0);
+
+				while(!e.isFlat() || !e.next().isFlat())
+					e = e.next();
+				
+				ret[0] = e.prev();
+				ret[1] = e.next().next();
 			}
-			return false;
+			
+			return ret;
 		}
 		
 		public Mat represent() {
@@ -129,9 +178,8 @@ public class JigsawSolver {
 			if (this.isCorner()) type = "Corner";
 			Imgproc.putText(ret, type, new Point(0,48), Core.FONT_HERSHEY_DUPLEX, 1., Scalar.all(255));
 			
-			int i = 0;
 			for(Edge e : edges) {
-				List<MatOfPoint> l = new ArrayList<>();
+				List<MatOfPoint> l = new ArrayList<>(1);
 				l.add(e.curve);
 				Scalar color = e.isFlat()? new Scalar(0,255,0) : new Scalar(255,0,0);
 				Imgproc.polylines(ret, l, false, color, 1);
@@ -151,15 +199,15 @@ public class JigsawSolver {
 
 			List<Edge> l = new ArrayList<>(4);
 			
-			l.add( cut(points, cornerIds[0], cornerIds[1]) );
-			l.add( cut(points, cornerIds[1], cornerIds[2]) );
-			l.add( cut(points, cornerIds[2], cornerIds[3]) );
-			l.add( cut(points, cornerIds[3], cornerIds[0]) );
+			l.add( cut(points, cornerIds[0], cornerIds[1], 0) );
+			l.add( cut(points, cornerIds[1], cornerIds[2], 1) );
+			l.add( cut(points, cornerIds[2], cornerIds[3], 2) );
+			l.add( cut(points, cornerIds[3], cornerIds[0], 3) );
 
 			return l;
 		}
 		
-		private Edge cut(MatOfPoint2f cont, int start, int end) {
+		private Edge cut(MatOfPoint2f cont, int start, int end, int id) {
 			Mat ret;
 			if (start < end) {
 				ret = cont.submat(start, end+1, 0, 1);
@@ -171,7 +219,7 @@ public class JigsawSolver {
 			
 			MatOfPoint ret1 = new MatOfPoint();
 			ret.convertTo(ret1, CvType.CV_32S);
-			return new Edge(ret1, this);
+			return new Edge(ret1, this, id);
 		}
 		
 		private int[] getCornerIds(MatOfPoint2f cont) {
@@ -248,5 +296,37 @@ public class JigsawSolver {
 	}
 	
 	public void solve() {
+		List<Element> corners = new ArrayList<>(4);
+		List<Element> borders = new ArrayList<>();
+		List<Element> inner = new ArrayList<>();
+		
+		for (Element e : this.elements) {
+			if(e.isCorner())
+				corners.add(e);
+			else if(e.isBorder())
+				borders.add(e);
+			else
+				inner.add(e);
+		}
+		
+		List<Element> flats = new ArrayList<>(borders);
+		flats.addAll(corners);
+		
+		List<Edge> l = new ArrayList<>();
+		List<Edge> r = new ArrayList<>();
+		
+		for(Element el : flats) {
+			Edge[] e = el.flatNeighbours();
+			l.add(e[0]);
+			r.add(e[1]);
+		}
+		
+		double[][] dist = new double[l.size()][r.size()];
+		
+		for(int i = 0; i < l.size(); i++) {
+			for(int j = 0; j < r.size(); j++) {
+				dist[i][j] = l.get(i).distance(r.get(j));
+			}
+		}
 	}
 }
