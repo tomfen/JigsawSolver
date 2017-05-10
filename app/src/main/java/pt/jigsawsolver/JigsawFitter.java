@@ -29,7 +29,7 @@ public class JigsawFitter {
     private static final double REPROJECT_ERROR = 8.;
 
     private static final Scalar OUTLINE_COLOR = new Scalar(0, 255, 0);
-    private static final int OULINE_THICKNESS = 6;
+    private static final int OUTLINE_THICKNESS = 6;
 
 
     public static Mat find(Mat img_object1, Mat img_scene1) {
@@ -147,10 +147,10 @@ public class JigsawFitter {
                 scene_corners.put(i, 0, pt);
             }*/
 
-            Imgproc.line(img_scene, new Point(scene_corners.get(0,0)), new Point(scene_corners.get(1,0)), OUTLINE_COLOR, OULINE_THICKNESS);
-            Imgproc.line(img_scene, new Point(scene_corners.get(1,0)), new Point(scene_corners.get(2,0)), OUTLINE_COLOR, OULINE_THICKNESS);
-            Imgproc.line(img_scene, new Point(scene_corners.get(2,0)), new Point(scene_corners.get(3,0)), OUTLINE_COLOR, OULINE_THICKNESS);
-            Imgproc.line(img_scene, new Point(scene_corners.get(3,0)), new Point(scene_corners.get(0,0)), OUTLINE_COLOR, OULINE_THICKNESS);
+            Imgproc.line(img_scene, new Point(scene_corners.get(0,0)), new Point(scene_corners.get(1,0)), OUTLINE_COLOR, OUTLINE_THICKNESS);
+            Imgproc.line(img_scene, new Point(scene_corners.get(1,0)), new Point(scene_corners.get(2,0)), OUTLINE_COLOR, OUTLINE_THICKNESS);
+            Imgproc.line(img_scene, new Point(scene_corners.get(2,0)), new Point(scene_corners.get(3,0)), OUTLINE_COLOR, OUTLINE_THICKNESS);
+            Imgproc.line(img_scene, new Point(scene_corners.get(3,0)), new Point(scene_corners.get(0,0)), OUTLINE_COLOR, OUTLINE_THICKNESS);
 
         } catch (Exception e) {
             return null;
