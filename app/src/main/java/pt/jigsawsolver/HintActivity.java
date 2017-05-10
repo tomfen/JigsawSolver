@@ -11,17 +11,27 @@ import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
 import android.text.InputType;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.RotateAnimation;
+import android.view.animation.TranslateAnimation;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
+
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
 
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
@@ -39,6 +49,7 @@ import java.util.List;
 @SuppressWarnings("deprecation")
 public class HintActivity extends Activity {
 
+    AdView adView;
     ImageButton cameraButton;
     ImageButton galleryButton;
     ImageButton saveButton;
@@ -66,6 +77,7 @@ public class HintActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_hint);
 
+        adView = (AdView) findViewById(R.id.admob_adview);
         cameraButton = (ImageButton) findViewById(R.id.cameraButton);
         galleryButton = (ImageButton) findViewById(R.id.galleryButton);
         saveButton = (ImageButton) findViewById(R.id.saveImgButton);
@@ -73,6 +85,22 @@ public class HintActivity extends Activity {
 
         photoView = (ImageView) findViewById(R.id.photoView);
         livePreview = (SurfaceView) findViewById(R.id.livePreview);
+
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                AdRequest adRequest = new AdRequest.Builder()
+                        .addTestDevice(AdRequest.DEVICE_ID_EMULATOR)
+                        .addTestDevice("91456216E0ECFE6F9134D159BFC820A8")
+                        .build();
+                adView.loadAd(adRequest);
+                Animation animation = new AlphaAnimation(0.f, 1.f);
+                animation.setDuration(2000);
+                animation.setFillAfter(true);
+                animation.setInterpolator(new AccelerateInterpolator());
+                adView.startAnimation(animation);
+            }
+        }, 20000);
 
         holder = livePreview.getHolder();
         holder.addCallback(new SurfaceHolder.Callback() {
@@ -251,7 +279,6 @@ public class HintActivity extends Activity {
                 }
             }
         });
-
     }
 
     @Override

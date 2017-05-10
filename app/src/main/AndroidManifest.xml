@@ -3,6 +3,9 @@
     package="pt.jigsawsolver">
     <uses-feature android:name="android.hardware.camera2"></uses-feature>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -21,8 +24,10 @@
             </intent-filter>
         </activity>
         <activity android:name=".HintActivity"
+            android:theme="@android:style/Theme.Holo.Light.NoActionBar"
             android:screenOrientation="sensorPortrait"/>
-        <activity android:name=".SolverActivity" />
+        <activity android:name=".SolverActivity"
+            android:theme="@android:style/Theme.Holo.Light.NoActionBar"/>
         <activity android:name=".SettingsActivity"></activity>
     </application>
     <!--<uses-permission android:name="android.permission.CAMERA" />-->

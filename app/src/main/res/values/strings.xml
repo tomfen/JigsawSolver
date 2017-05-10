@@ -12,4 +12,7 @@
     <string name="file_name">File name</string>
     <string name="ok" translatable="false">Ok</string>
     <string name="cancel">Cancel</string>
+    <string name="dummy_ad_banner" translatable="false">ca-app-pub-3940256099942544/6300978111</string>
+    <string name="dummy_ad_intersticial" translatable="false">ca-app-pub-3940256099942544/1033173712</string>
+    <string name="dummy_ad_nativeexpress" translatable="false">ca-app-pub-3940256099942544/1072772517</string>
 </resources>

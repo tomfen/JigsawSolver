@@ -3,12 +3,17 @@ package pt.jigsawsolver;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
 
 public class MainMenuActivity extends Activity {
     ListView list;
+    AdView adView;
+
     static{ System.loadLibrary("opencv_java3"); }
 
     Integer[] labelId = {
@@ -25,12 +30,20 @@ public class MainMenuActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main_menu);
 
         MainMenuList adapter = new MainMenuList(MainMenuActivity.this, labelId, imageId);
 
+        adView = (AdView) findViewById(R.id.admob_adview);
         list = (ListView)findViewById(R.id.MainMenuList);
         list.setAdapter(adapter);
+
+        AdRequest adRequest = new AdRequest.Builder()
+                .addTestDevice(AdRequest.DEVICE_ID_EMULATOR)
+                .addTestDevice("91456216E0ECFE6F9134D159BFC820A8")
+                .build();
+        adView.loadAd(adRequest);
 
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 
