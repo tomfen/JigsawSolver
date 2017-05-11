@@ -14,6 +14,7 @@ import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
 import android.text.InputType;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -125,7 +126,7 @@ public class HintActivity extends Activity {
                     if (result != null) {
                         Bitmap resultBmp = Bitmap.createBitmap(result.cols(), result.rows(), Bitmap.Config.RGB_565);
                         Utils.matToBitmap(result, resultBmp);
-
+                        photoView.setImageResource(0);
                         photoView.setImageBitmap(resultBmp);
                     } else {
                         Toast.makeText(getApplicationContext(), R.string.piece_not_found, Toast.LENGTH_LONG).show();
@@ -188,6 +189,7 @@ public class HintActivity extends Activity {
                 Intent chooserIntent = Intent.createChooser(getIntent, "Select Image");
                 chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] {pickIntent});
 
+                //photoView.setImageResource(0);
                 startActivityForResult(chooserIntent, PICK_IMAGE);
             }
         });
@@ -211,9 +213,20 @@ public class HintActivity extends Activity {
                                     BitmapDrawable bd = (BitmapDrawable) photoView.getDrawable();
                                     Bitmap pictureBitmap = bd.getBitmap();
 
+                                    File direct = new File(Environment.getExternalStorageDirectory().getAbsolutePath()
+                                            + "/JigsawSolverPictures");
+
+                                    if (!direct.exists()) {
+                                        File wallpaperDirectory = new File(Environment.getExternalStorageDirectory()
+                                                .getAbsolutePath() + "/JigsawSolverPictures");
+                                        wallpaperDirectory.mkdirs();
+                                        Log.d("DIR: ", "exists");
+                                    }
+
                                     FileOutputStream outStream = null;
-                                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath()
-                                            + "/" + input.getText().toString() + ".jpeg";
+                                    String filepath = Environment.getExternalStorageDirectory()
+                                            .getAbsolutePath() + "/JigsawSolverPictures"+ "/"
+                                            + input.getText().toString() + ".jpeg";
                                     File f = new File(filepath);
                                     outStream = new FileOutputStream(f);
                                     pictureBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
@@ -270,12 +283,14 @@ public class HintActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_IMAGE && resultCode == Activity.RESULT_OK) {
             try {
-                Bitmap pictureBitmap = getBitmapFromUri(data.getData());
+
+                final Bitmap pictureBitmap = getBitmapFromUri(data.getData());
 
                 picture = new Mat();
                 Utils.bitmapToMat(pictureBitmap, picture);
 
                 photoView.setImageBitmap(pictureBitmap);
+
 
             } catch (Exception e){
                 Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
