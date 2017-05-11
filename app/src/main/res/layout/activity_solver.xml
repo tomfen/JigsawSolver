@@ -29,15 +29,11 @@
                 android:layout_weight="10"
                 android:padding="10dp">
 
-                <!---->
-                <!--<pt.jigsawsolver.Tmp-->
-                <!--android:layout_width="wrap_content"-->
-                <!--android:layout_height="wrap_content" />-->
-
-                <pt.jigsawsolver.SolverSurfaceView
+                <ImageView
                 android:id="@+id/livePreviewSolver"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"/>
+                android:layout_height="match_parent"
+                    android:src="@android:color/darker_gray"/>
             </FrameLayout>
 
             <LinearLayout

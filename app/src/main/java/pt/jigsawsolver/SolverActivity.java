@@ -4,17 +4,12 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
-import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
-import android.util.Log;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
+import android.provider.MediaStore;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -39,16 +34,11 @@ public class SolverActivity extends Activity {
     ImageButton saveButtonSolved;
 
     ImageView photoView;
-    SolverSurfaceView livePreview;
-    SurfaceHolder holder;
-    private Camera.PictureCallback mPicture;
-
-    Camera camera;
+    ImageView livePreview;
 
     private static int PICK_IMAGE = 1;
     private static int CAM_REQUEST = 2;
 
-    Boolean cameraStopped = false;
     Uri uriSavedImage;
 
     @Override
@@ -62,84 +52,21 @@ public class SolverActivity extends Activity {
         saveButtonSolved = (ImageButton) findViewById(R.id.saveImgButtonSolved);
 
         photoView = (ImageView) findViewById(R.id.photoViewSolver);
-        livePreview = (SolverSurfaceView) findViewById(R.id.livePreviewSolver);
-        holder = livePreview.getHolder();
-
-        //Camera
-        holder.addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder holder) {
-              // Canvas canvas = holder.lockCanvas();
-
-            }
-
-            @Override
-            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-
-            }
-
-            @Override
-            public void surfaceDestroyed(SurfaceHolder holder) {
-
-            }
-
-        });
-
-          mPicture = new Camera.PictureCallback() {
-
-            @Override
-            public void onPictureTaken(byte[] data, Camera camera) {
-
-                try {
-                    Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
-
-                    FileOutputStream outStream = null;
-                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/savedimg.jpeg";
-                    File f = new File(filepath);
-                    outStream = new FileOutputStream(f);
-                    bmp.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
-                    outStream.flush();
-                    outStream.close();
-                   // photoView.setImageBitmap(bmp);
-                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
-
-                } catch (Exception e) {
-                    Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
-                }
-            }
-        };
+        livePreview = (ImageView) findViewById(R.id.livePreviewSolver);
 
         //Turn on camera
+
         cameraButton.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                if (camera == null){
-                    camera = Camera.open();
-                }
-                try {
-                    camera.setPreviewDisplay(holder);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                 camera.startPreview();
-                cameraStopped = false;
-            }
-        });
+                Intent camera_intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
-        //Handle camera photo
-        livePreview.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
+                String picturePath = Environment.getExternalStorageDirectory() + "/pic.jpg";
 
-                if (camera != null) {
-                    if (!cameraStopped) {
-                        camera.stopPreview();
-                        camera.takePicture(null, null, mPicture);
-                    } else {
-                        camera.startPreview();
-                    }
-                    cameraStopped = !cameraStopped;
-                }
+                uriSavedImage = Uri.fromFile(new File(picturePath));
+
+                camera_intent.putExtra(MediaStore.EXTRA_OUTPUT, uriSavedImage);
+                startActivityForResult(camera_intent, CAM_REQUEST);
             }
         });
 
@@ -228,7 +155,7 @@ public class SolverActivity extends Activity {
                 Mat picture = new Mat();
                 Utils.bitmapToMat(pictureBitmap, picture);
 
-                livePreview.setImage(pictureBitmap);
+                livePreview.setImageBitmap(pictureBitmap);
 
             } catch (Exception e){
                 Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
@@ -241,7 +168,7 @@ public class SolverActivity extends Activity {
                 Mat picture = new Mat();
                 Utils.bitmapToMat(pictureBitmap, picture);
 
-              //  photoView.setImageBitmap(pictureBitmap);
+                livePreview.setImageBitmap(pictureBitmap);
 
             } catch (Exception e){
                 Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
@@ -257,16 +184,4 @@ public class SolverActivity extends Activity {
         pfd.close();
         return image;
     }
-
-    @Override
-    public void onPause() {
-        super.onPause();  // Always call the superclass method first
-        // Release the Camera because we don't need it when paused
-        // and other activities might need to use it.
-        if (camera != null) {
-            camera.release();
-            camera = null;
-        }
-    }
-
 }
