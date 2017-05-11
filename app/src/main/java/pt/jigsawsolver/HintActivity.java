@@ -14,6 +14,7 @@ import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
 import android.text.InputType;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -212,9 +213,20 @@ public class HintActivity extends Activity {
                                     BitmapDrawable bd = (BitmapDrawable) photoView.getDrawable();
                                     Bitmap pictureBitmap = bd.getBitmap();
 
+                                    File direct = new File(Environment.getExternalStorageDirectory().getAbsolutePath()
+                                            + "/JigsawSolverPictures");
+
+                                    if (!direct.exists()) {
+                                        File wallpaperDirectory = new File(Environment.getExternalStorageDirectory()
+                                                .getAbsolutePath() + "/JigsawSolverPictures");
+                                        wallpaperDirectory.mkdirs();
+                                        Log.d("DIR: ", "exists");
+                                    }
+
                                     FileOutputStream outStream = null;
-                                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath()
-                                            + "/" + input.getText().toString() + ".jpeg";
+                                    String filepath = Environment.getExternalStorageDirectory()
+                                            .getAbsolutePath() + "/JigsawSolverPictures"+ "/"
+                                            + input.getText().toString() + ".jpeg";
                                     File f = new File(filepath);
                                     outStream = new FileOutputStream(f);
                                     pictureBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
