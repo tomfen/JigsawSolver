@@ -19,13 +19,12 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="40"
-            android:background="#ff0000">
+            android:layout_weight="40">
 
             <SurfaceView
                 android:id="@+id/livePreview"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+                android:layout_height="450dp" />
         </FrameLayout>
 
         <LinearLayout
