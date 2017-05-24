@@ -20,6 +20,10 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.google.android.gms.ads.AdListener;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.InterstitialAd;
+
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 
@@ -50,6 +54,7 @@ public class SolverActivity extends Activity {
 
     Boolean cameraStopped = false;
     Uri uriSavedImage;
+    InterstitialAd interstitial;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +69,26 @@ public class SolverActivity extends Activity {
         photoView = (ImageView) findViewById(R.id.photoViewSolver);
         livePreview = (SolverSurfaceView) findViewById(R.id.livePreviewSolver);
         holder = livePreview.getHolder();
+
+        try {
+            interstitial = new InterstitialAd(this);
+            interstitial.setAdUnitId("ca-app-pub-3940256099942544/1033173712");
+            AdRequest adRequest = new AdRequest.Builder()
+                    .addTestDevice(AdRequest.DEVICE_ID_EMULATOR)
+                    .addTestDevice("91456216E0ECFE6F9134D159BFC820A8")
+                    .build();
+            interstitial.setAdListener(new AdListener() {
+                @Override
+                public void onAdLoaded() {
+                    super.onAdLoaded();
+                    interstitial.show();
+                }
+            });
+            interstitial.loadAd(adRequest);
+        } catch (Exception e) {
+            e.equals(e);
+        }
+
 
         //Camera
         holder.addCallback(new SurfaceHolder.Callback() {
