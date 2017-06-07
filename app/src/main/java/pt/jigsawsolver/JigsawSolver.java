@@ -24,6 +24,7 @@ import org.opencv.imgproc.Moments;
 public class JigsawSolver {
 	
 	List<Element> elements = new ArrayList<>();
+	private Size solutionSize;
 	
 	private class Edge {
 		MatOfPoint curve;
@@ -166,6 +167,15 @@ public class JigsawSolver {
 			tilt = getAngle(edges.get(2).getMidPoint(), edges.get(0).getMidPoint());
 		}
 		
+		public Mat getMask() {
+			Mat ret = new Mat(img.rows(), img.cols(), CvType.CV_8U);
+			List<MatOfPoint> l = new ArrayList<>();
+			l.add(contour);
+			Imgproc.fillPoly(ret, l, Scalar.all(255));
+			return ret;
+			
+		}
+		
 		private double getAngle(Point origin, Point target) {
 		    double angle = Math.toDegrees(Math.atan2(target.y - origin.y, target.x - origin.x));
 		    
@@ -296,7 +306,9 @@ public class JigsawSolver {
 			return new Point(m.m10/m.m00,m.m01/m.m00);
 		}
 		
-		
+		public Edge edgeByDir(int d) {
+			return edges.get((4 + d - rotate)%4);
+		}
 	}
 	
 	private static double distSq(Point a, Point b) {
@@ -350,6 +362,8 @@ public class JigsawSolver {
 	
 	public void solve() {
 		List<Element> borders = new ArrayList<>();
+		List<Element> inner = new ArrayList<>();
+		
 		
 		for (Element e : this.elements) {
 			if(e.isCorner() || e.isBorder())
@@ -357,6 +371,7 @@ public class JigsawSolver {
 		}
 		
 		solveBorder(borders);
+		solveInside(inner);
 	}
 	
 	private void solveBorder(List<Element> elements) {
@@ -391,6 +406,88 @@ public class JigsawSolver {
 			l.remove(e1);
 			r.remove(e2);
 		}
+
+		Element anchor = this.elements.get(0);
+		computePosConnected(anchor, 0, 0, 0, new HashSet<Element>());
+		
+		Point min = new Point(0,0);
+		Point max = new Point(0,0);
+		
+		for(Element e : elements) {
+			if(e.position != null) {
+				double x = e.position.x;
+				double y = e.position.y;
+				if(x<min.x) min.x=x;
+				if(x>max.x) max.x=x;
+				if(y<min.y) min.y=y;
+				if(y>max.y) max.y=y;
+			}
+		}
+
+		for(Element e : elements) {
+			if(e.position != null) {
+				e.position.x -= min.x;
+				e.position.y -= min.y;
+			}
+		}
+		
+		solutionSize = new Size(max.x-min.x+1, max.y-min.y+1);
+	}
+	
+	private void solveInside(List<Element> inner) {
+		Element[][] sol = new Element[(int) solutionSize.width][(int) solutionSize.height];
+		for(Element el : elements) {
+			if(el.position != null)
+				sol[(int) el.position.x][(int) el.position.y] = el;
+		}
+		
+		
+		
+		for(int x = 1; x < (int) solutionSize.width-1; x++) {
+			for(int y = 1; y < (int) solutionSize.height-1; y++) {
+				Edge top = sol[x][y-1].edgeByDir(0);
+				Edge left = sol[x-1][y].edgeByDir(3);
+				
+				Element e = bestInner(top, left);
+				sol[x][y] = e;
+				e.position = new Point(x,y);
+			}
+		}
+	}
+	
+	Element bestInner(Edge top, Edge left) {
+		Element best = null;
+		int rotate = 0;
+		double minDist = Double.MAX_VALUE;
+		for(Element e: elements) {
+			if(e.position == null){
+				best = e;
+				break;
+			}
+		}
+		
+		for(Element e: elements) {
+			if(e.position != null)
+				continue;
+			for (int r = 0; r < 4; r++) {
+				e.rotate = r;
+				double d1 = e.edgeByDir(2).distance(top);
+				double d2 = e.edgeByDir(1).distance(left);
+				double d = d1+d2;
+				
+				if(d < minDist) {
+					best = e;
+					rotate = r;
+					minDist = d;
+				}
+			}
+		}
+
+		best.edgeByDir(2).merge(top);
+		best.edgeByDir(1).merge(left);
+		best.rotate = rotate;
+		
+		return best;
 	}
 	
 	private int[] bestMatch(Map<Edge, Integer> l, Map<Edge, Integer> r, double[][] dist, Edge[] el, Edge[] er) {
@@ -417,9 +514,9 @@ public class JigsawSolver {
 			for(Edge ed : el.edges) {
 				ed.connected = null;
 			}
+			el.connected = new HashSet<>();
+			el.connected.add(el);
 		}
-		el.connected = new HashSet<>();
-		el.connected.add(el);
 	}
 	
 	public List<Element> getCorners() {
@@ -432,9 +529,7 @@ public class JigsawSolver {
 	}
 	
 	public Mat getSolution() {
-		Element anchor = this.elements.get(0);
 		
-		computePosConnected(anchor, 0, 0, 0, new HashSet<Element>());
 		
 		Point min = new Point(0,0);
 		Point max = new Point(0,0);
