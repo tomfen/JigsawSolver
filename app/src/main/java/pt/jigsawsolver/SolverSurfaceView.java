@@ -16,14 +16,17 @@ public class SolverSurfaceView extends SurfaceView {
 
     public SolverSurfaceView(Context context) {
         super(context);
+        setWillNotDraw(false);
     }
 
     public SolverSurfaceView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        setWillNotDraw(false);
     }
 
     public SolverSurfaceView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        setWillNotDraw(false);
     }
 
     public void setImage(Bitmap image){

@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.hardware.Camera;
 import android.net.Uri;
@@ -15,6 +16,7 @@ import android.os.Handler;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
 import android.text.InputType;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -34,9 +36,13 @@ import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 
 import org.opencv.android.Utils;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
@@ -44,7 +50,15 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import static org.opencv.core.CvType.CV_8U;
+import static org.opencv.imgcodecs.Imgcodecs.imread;
+import static org.opencv.imgcodecs.Imgcodecs.imwrite;
+import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
+import static org.opencv.imgproc.Imgproc.THRESH_BINARY_INV;
+import static org.opencv.imgproc.Imgproc.threshold;
 
 @SuppressWarnings("deprecation")
 public class HintActivity extends Activity {
@@ -153,7 +167,7 @@ public class HintActivity extends Activity {
                     if (result != null) {
                         Bitmap resultBmp = Bitmap.createBitmap(result.cols(), result.rows(), Bitmap.Config.RGB_565);
                         Utils.matToBitmap(result, resultBmp);
-
+                        photoView.setImageResource(0);
                         photoView.setImageBitmap(resultBmp);
                     } else {
                         Toast.makeText(getApplicationContext(), R.string.piece_not_found, Toast.LENGTH_LONG).show();
@@ -216,6 +230,7 @@ public class HintActivity extends Activity {
                 Intent chooserIntent = Intent.createChooser(getIntent, "Select Image");
                 chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] {pickIntent});
 
+                //photoView.setImageResource(0);
                 startActivityForResult(chooserIntent, PICK_IMAGE);
             }
         });
@@ -239,9 +254,20 @@ public class HintActivity extends Activity {
                                     BitmapDrawable bd = (BitmapDrawable) photoView.getDrawable();
                                     Bitmap pictureBitmap = bd.getBitmap();
 
+                                    File direct = new File(Environment.getExternalStorageDirectory().getAbsolutePath()
+                                            + "/JigsawSolverPictures");
+
+                                    if (!direct.exists()) {
+                                        File wallpaperDirectory = new File(Environment.getExternalStorageDirectory()
+                                                .getAbsolutePath() + "/JigsawSolverPictures");
+                                        wallpaperDirectory.mkdirs();
+                                        Log.d("DIR: ", "exists");
+                                    }
+
                                     FileOutputStream outStream = null;
-                                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath()
-                                            + "/" + input.getText().toString() + ".jpeg";
+                                    String filepath = Environment.getExternalStorageDirectory()
+                                            .getAbsolutePath() + "/JigsawSolverPictures"+ "/"
+                                            + input.getText().toString() + ".jpeg";
                                     File f = new File(filepath);
                                     outStream = new FileOutputStream(f);
                                     pictureBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
@@ -269,14 +295,19 @@ public class HintActivity extends Activity {
         contourButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
 
-                try {
+                /*try {
                     photoView.buildDrawingCache();
                     Bitmap bmap = photoView.getDrawingCache();
                     color_picture(photoView, bmap);
 
                 } catch (Exception e) {
                     Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
-                }
+                }*/
+
+                photoView.buildDrawingCache();
+                Bitmap bmap = photoView.getDrawingCache();
+                removeBackgroundFromPicture(photoView, bmap);
+                //setBlackBackground(photoView, bmap);
             }
         });
     }
@@ -297,12 +328,14 @@ public class HintActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_IMAGE && resultCode == Activity.RESULT_OK) {
             try {
-                Bitmap pictureBitmap = getBitmapFromUri(data.getData());
+
+                final Bitmap pictureBitmap = getBitmapFromUri(data.getData());
 
                 picture = new Mat();
                 Utils.bitmapToMat(pictureBitmap, picture);
 
                 photoView.setImageBitmap(pictureBitmap);
+
 
             } catch (Exception e){
                 Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
@@ -356,6 +389,45 @@ public class HintActivity extends Activity {
         //Imgproc.cvtColor(tempBmp1, tempBmp1, Imgproc.COLOR_GRAY2RGBA, 4);
 
         Utils.matToBitmap(src, tempBmp1);
+        iv.setImageBitmap(tempBmp1);
+    }
+
+
+    public static void removeBackgroundFromPicture(ImageView iv, Bitmap bmp) {
+        Mat src = new Mat();
+        Utils.bitmapToMat(bmp, src);
+        Mat dst = new Mat(src.rows(), src.cols(), CvType.CV_8UC3);
+        dst.setTo(new Scalar(0, 0, 0, 0));
+        Mat tmp = new Mat();
+        Mat alpha = new Mat();
+
+        Imgproc.cvtColor(src, tmp, Imgproc.COLOR_BGR2GRAY);
+        threshold(tmp, alpha, 150, 255, THRESH_BINARY);
+
+        List<Mat> rgb = new ArrayList<Mat>(3);
+        Core.split(src, rgb);
+
+        //List<Mat> rgba = Arrays.asList(dst, dst, dst, alpha);
+        List<Mat> rgba = Arrays.asList(rgb.get(0), rgb.get(1), rgb.get(2), alpha);
+        Core.merge(rgba, dst);
+
+        Log.d("RGBA: ", rgb.get(0).toString() + " " + rgb.get(1).toString() + " " + rgb.get(2).toString()
+                + " " + alpha.toString());
+
+        Bitmap tempBmp1 = Bitmap.createBitmap(bmp.getWidth(), bmp.getHeight(),
+                bmp.getConfig());
+
+
+        Utils.matToBitmap(dst, tempBmp1);
+        int [] allpixels = new int [tempBmp1.getHeight() * tempBmp1.getWidth()];
+        tempBmp1.getPixels(allpixels, 0, tempBmp1.getWidth(), 0, 0, tempBmp1.getWidth(), tempBmp1.getHeight());
+        for(int i = 0; i < allpixels.length; i++)
+        {
+            if (Color.alpha(allpixels[i]) == 0)
+            allpixels[i] = Color.BLACK;
+        }
+
+        tempBmp1.setPixels(allpixels, 0, tempBmp1.getWidth(), 0, 0, tempBmp1.getWidth(), tempBmp1.getHeight());
         iv.setImageBitmap(tempBmp1);
     }
 

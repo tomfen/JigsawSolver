@@ -1,21 +1,21 @@
 package pt.jigsawsolver;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
-import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
+import android.provider.MediaStore;
+import android.text.InputType;
 import android.util.Log;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -25,7 +25,11 @@ import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.InterstitialAd;
 
 import org.opencv.android.Utils;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.io.FileDescriptor;
@@ -41,18 +45,14 @@ public class SolverActivity extends Activity {
     ImageButton galleryButton;
     ImageButton saveButtonUnsolved;
     ImageButton saveButtonSolved;
+    ImageButton solveButton;
 
     ImageView photoView;
-    SolverSurfaceView livePreview;
-    SurfaceHolder holder;
-    private Camera.PictureCallback mPicture;
-
-    Camera camera;
+    ImageView livePreview;
 
     private static int PICK_IMAGE = 1;
     private static int CAM_REQUEST = 2;
 
-    Boolean cameraStopped = false;
     Uri uriSavedImage;
     InterstitialAd interstitial;
 
@@ -65,9 +65,10 @@ public class SolverActivity extends Activity {
         galleryButton = (ImageButton) findViewById(R.id.galleryButtonSolver);
         saveButtonUnsolved = (ImageButton) findViewById(R.id.saveImgButtonUnsolved);
         saveButtonSolved = (ImageButton) findViewById(R.id.saveImgButtonSolved);
+        solveButton = (ImageButton) findViewById(R.id.solveButton);
 
         photoView = (ImageView) findViewById(R.id.photoViewSolver);
-        livePreview = (SolverSurfaceView) findViewById(R.id.livePreviewSolver);
+        livePreview = (ImageView) findViewById(R.id.livePreviewSolver);
         holder = livePreview.getHolder();
 
         try {
@@ -138,33 +139,14 @@ public class SolverActivity extends Activity {
         cameraButton.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                if (camera == null){
-                    camera = Camera.open();
-                }
-                try {
-                    camera.setPreviewDisplay(holder);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                 camera.startPreview();
-                cameraStopped = false;
-            }
-        });
+                Intent camera_intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
-        //Handle camera photo
-        livePreview.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
+                String picturePath = Environment.getExternalStorageDirectory() + "/pic.jpg";
 
-                if (camera != null) {
-                    if (!cameraStopped) {
-                        camera.stopPreview();
-                        camera.takePicture(null, null, mPicture);
-                    } else {
-                        camera.startPreview();
-                    }
-                    cameraStopped = !cameraStopped;
-                }
+                uriSavedImage = Uri.fromFile(new File(picturePath));
+
+                camera_intent.putExtra(MediaStore.EXTRA_OUTPUT, uriSavedImage);
+                startActivityForResult(camera_intent, CAM_REQUEST);
             }
         });
 
@@ -220,25 +202,90 @@ public class SolverActivity extends Activity {
         saveButtonSolved.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
 
+                AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(SolverActivity.this);
+
+                alertDialogBuilder.setTitle(R.string.file_name);
+
+                final EditText input = new EditText(SolverActivity.this);
+                input.setInputType(InputType.TYPE_CLASS_TEXT);
+                input.setText("img");
+                alertDialogBuilder.setView(input);
+
+                alertDialogBuilder
+                        .setCancelable(true)
+                        .setPositiveButton(R.string.ok,new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog,int id) {
+                                try {
+                                    BitmapDrawable bd = (BitmapDrawable) photoView.getDrawable();
+                                    Bitmap pictureBitmap = bd.getBitmap();
+
+                                    File direct = new File(Environment.getExternalStorageDirectory().getAbsolutePath()
+                                            + "/JigsawSolverPictures");
+
+                                    if (!direct.exists()) {
+                                        File wallpaperDirectory = new File(Environment.getExternalStorageDirectory()
+                                                .getAbsolutePath() + "/JigsawSolverPictures");
+                                        wallpaperDirectory.mkdirs();
+                                        Log.d("DIR: ", "exists");
+                                    }
+
+                                    FileOutputStream outStream = null;
+                                    String filepath = Environment.getExternalStorageDirectory()
+                                            .getAbsolutePath() + "/JigsawSolverPictures"+ "/"
+                                            + input.getText().toString() + ".jpeg";
+                                    File f = new File(filepath);
+                                    outStream = new FileOutputStream(f);
+                                    pictureBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
+                                    outStream.flush();
+                                    outStream.close();
+                                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
+
+                                } catch (Exception e) {
+                                    Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
+                                }
+                            }
+                        })
+                        .setNegativeButton(R.string.cancel,new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog,int id) {
+                                dialog.cancel();
+                            }
+                        });
+
+                AlertDialog alertDialog = alertDialogBuilder.create();
+                alertDialog.setCanceledOnTouchOutside(false);
+                alertDialog.show();
+            }
+        });
+
+        solveButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+
                 try {
-                    BitmapDrawable bd = (BitmapDrawable) photoView.getDrawable();
+                    BitmapDrawable bd = (BitmapDrawable) livePreview.getDrawable();
                     Bitmap bm = bd.getBitmap();
 
-                    FileOutputStream outStream = null;
-                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/savedimg.jpeg";
-                    File f = new File(filepath);
-                    outStream = new FileOutputStream(f);
-                    bm.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
-                    outStream.flush();
-                    outStream.close();
-                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
+                    Mat picture1 = new Mat();
+                    Mat picture = new Mat();
+                    Utils.bitmapToMat(bm, picture1);
+                    Imgproc.cvtColor(picture1, picture, Imgproc.COLOR_RGBA2RGB);
+
+                    JigsawSolver solver = new JigsawSolver();
+
+                    solver.loadImage(picture);
+                    solver.solve();
+
+                    Mat solution = solver.getSolution();
+
+                    Bitmap bitmap = Bitmap.createBitmap(solution.width(), solution.height(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(solution, bitmap);
+
+                    photoView.setImageBitmap(bitmap);
 
                 } catch (Exception e) {
                     Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
                 }
             }
         });
-
     }
 
     @Override
@@ -253,9 +300,9 @@ public class SolverActivity extends Activity {
                 Mat picture = new Mat();
                 Utils.bitmapToMat(pictureBitmap, picture);
 
-                livePreview.setImage(pictureBitmap);
+                livePreview.setImageBitmap(pictureBitmap);
 
-            } catch (Exception e){
+            } catch (Exception e) {
                 Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
             }
         } else if (requestCode == CAM_REQUEST && resultCode == Activity.RESULT_OK) {
@@ -266,7 +313,7 @@ public class SolverActivity extends Activity {
                 Mat picture = new Mat();
                 Utils.bitmapToMat(pictureBitmap, picture);
 
-              //  photoView.setImageBitmap(pictureBitmap);
+                livePreview.setImageBitmap(pictureBitmap);
 
             } catch (Exception e){
                 Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
@@ -282,16 +329,4 @@ public class SolverActivity extends Activity {
         pfd.close();
         return image;
     }
-
-    @Override
-    public void onPause() {
-        super.onPause();  // Always call the superclass method first
-        // Release the Camera because we don't need it when paused
-        // and other activities might need to use it.
-        if (camera != null) {
-            camera.release();
-            camera = null;
-        }
-    }
-
 }

@@ -1,10 +1,11 @@
 package pt.jigsawsolver;
 
-package jigsaw;
-
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -18,10 +19,12 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.imgproc.Moments;
 
 public class JigsawSolver {
 	
 	List<Element> elements = new ArrayList<>();
+	private Size solutionSize;
 	
 	private class Edge {
 		MatOfPoint curve;
@@ -36,9 +39,19 @@ public class JigsawSolver {
 			this.curveNorm = normalizedCurve(curve);
 			this.no = no;
 		}
-		
+
 		public Point getStartPoint() {
 			return new Point(curve.get(0, 0));
+		}
+		
+		public Point getEndPoint() {
+			return new Point(curve.get(curve.rows()-1, 0));
+		}
+		
+		public Point getMidPoint() {
+			Point p1 = getStartPoint();
+			Point p2 = getEndPoint();
+			return new Point((p1.x +p2.x)/2, (p1.y+p2.y)/2);
 		}
 		
 		private MatOfPoint normalizedCurve(MatOfPoint c) {
@@ -73,12 +86,18 @@ public class JigsawSolver {
 		}
 		
 		public void merge(Edge e) {
+			HashSet<Element> set = e.parent.connected;
+			this.parent.connected.addAll(set);
+			for (Element el : set) {
+				el.connected = this.parent.connected;
+			}
+			
 			this.connected = e;
 			e.connected = this;
 		}
 		
 		public double distance(Edge e) {
-			if(this.isFlat() || e.isFlat() || this == e)
+			if(this.isFlat() || e.isFlat() || this.parent == e.parent)
 				return Double.MAX_VALUE;
 			
 			MatOfPoint temp1 = new MatOfPoint();
@@ -98,7 +117,6 @@ public class JigsawSolver {
 				temp2.put(i, 0, t);
 			}
 			temp1.push_back(temp2);
-			
 			return Imgproc.contourArea(temp1);
 		}
 		
@@ -110,6 +128,10 @@ public class JigsawSolver {
 			return parent.edges.get(no==0? 3 : no-1);
 		}
 		
+		Edge opposite() {
+			return parent.edges.get((no+2)%4);
+		}
+		
 		
 	}
 	
@@ -117,13 +139,21 @@ public class JigsawSolver {
 		int id;
 		Mat img;
 		List<Edge> edges;
+		double tilt;
+		int rotate = -1;
+		Point position;
+		HashSet<Element> connected;
 		private boolean corner = false;
 		private boolean border = false;
+		private MatOfPoint contour;
 		
 		Element(int id, Mat img, MatOfPoint contour) {
 			this.id = id;
 			this.img = img;
+			this.contour = contour;
 			this.edges = getEdges(contour);
+			this.connected = new HashSet<>();
+			this.connected.add(this);
 			
 			int flat = 0;
 			for (Edge e : edges)
@@ -134,6 +164,25 @@ public class JigsawSolver {
 			else if(flat==2)
 				corner = true;
 			
+			tilt = getAngle(edges.get(2).getMidPoint(), edges.get(0).getMidPoint());
+		}
+		
+		public Mat getMask() {
+			Mat ret = new Mat(img.rows(), img.cols(), CvType.CV_8U);
+			List<MatOfPoint> l = new ArrayList<>();
+			l.add(contour);
+			Imgproc.fillPoly(ret, l, Scalar.all(255));
+			return ret;
+			
+		}
+		
+		private double getAngle(Point origin, Point target) {
+		    double angle = Math.toDegrees(Math.atan2(target.y - origin.y, target.x - origin.x));
+		    
+		    if(angle < 0)
+		    	angle += 360;
+		    
+		    return angle;
 		}
 		
 		boolean isBorder() {
@@ -163,7 +212,7 @@ public class JigsawSolver {
 					e = e.next();
 				
 				ret[0] = e.prev();
-				ret[1] = e.next().next();
+				ret[1] = e.opposite();
 			}
 			
 			return ret;
@@ -177,15 +226,20 @@ public class JigsawSolver {
 			if (this.isBorder()) type = "Border";
 			if (this.isCorner()) type = "Corner";
 			Imgproc.putText(ret, type, new Point(0,48), Core.FONT_HERSHEY_DUPLEX, 1., Scalar.all(255));
-			
+
 			for(Edge e : edges) {
 				List<MatOfPoint> l = new ArrayList<>(1);
 				l.add(e.curve);
 				Scalar color = e.isFlat()? new Scalar(0,255,0) : new Scalar(255,0,0);
 				Imgproc.polylines(ret, l, false, color, 1);
 				Imgproc.drawMarker(ret, e.getStartPoint(), new Scalar(0,0,255), Imgproc.MARKER_TILTED_CROSS, 9, 1, 8);
+				if(e.connected != null)
+					Imgproc.putText(ret, String.valueOf(e.connected.parent.id), e.getMidPoint(), Core.FONT_HERSHEY_DUPLEX, .5, Scalar.all(255));
 			}
 			
+			Imgproc.line(ret, getCenter(), edges.get(0).getMidPoint(), new Scalar(255,255,0));
+			Imgproc.putText(ret, String.valueOf(rotate), new Point(0,70), Core.FONT_HERSHEY_DUPLEX, 1., Scalar.all(255));
+
 			return ret;
 		}
 		
@@ -246,8 +300,15 @@ public class JigsawSolver {
 			Arrays.sort(corners);
 			return corners;
 		}
+
+		public Point getCenter() {
+			Moments m = Imgproc.moments(contour);
+			return new Point(m.m10/m.m00,m.m01/m.m00);
+		}
 		
-		
+		public Edge edgeByDir(int d) {
+			return edges.get((4 + d - rotate)%4);
+		}
 	}
 	
 	private static double distSq(Point a, Point b) {
@@ -278,11 +339,15 @@ public class JigsawSolver {
 			this.elements.add(el);
 	    }
 	    
-	    for(int i = 0; i < this.elements.size(); i++) {
-	    	Mat img = this.elements.get(i).represent();
-	    	Imgcodecs.imwrite("EL\\"+i+".png", img);
-	    }
+	    
 	 }
+	
+	public void saveElements(String dir) {
+		for(int i = 0; i < this.elements.size(); i++) {
+	    	Mat img = this.elements.get(i).represent();
+	    	Imgcodecs.imwrite(dir+"\\"+i+".png", img);
+	    }
+	}
 	
 	private void offsetContour(MatOfPoint cont, int x, int y) {
 		for (int i = 0; i < cont.rows(); i++) {
@@ -296,37 +361,232 @@ public class JigsawSolver {
 	}
 	
 	public void solve() {
-		List<Element> corners = new ArrayList<>(4);
 		List<Element> borders = new ArrayList<>();
 		List<Element> inner = new ArrayList<>();
 		
+		
 		for (Element e : this.elements) {
-			if(e.isCorner())
-				corners.add(e);
-			else if(e.isBorder())
+			if(e.isCorner() || e.isBorder())
 				borders.add(e);
-			else
-				inner.add(e);
 		}
 		
-		List<Element> flats = new ArrayList<>(borders);
-		flats.addAll(corners);
+		solveBorder(borders);
+		solveInside(inner);
+	}
+	
+	private void solveBorder(List<Element> elements) {
+		Map<Edge, Integer> l = new HashMap<>();
+		Map<Edge, Integer> r = new HashMap<>();
+		Edge[] el = new Edge[elements.size()];
+		Edge[] er = new Edge[elements.size()];
+		double[][] dist = new double[elements.size()][elements.size()];
 		
-		List<Edge> l = new ArrayList<>();
-		List<Edge> r = new ArrayList<>();
-		
-		for(Element el : flats) {
-			Edge[] e = el.flatNeighbours();
-			l.add(e[0]);
-			r.add(e[1]);
+		int k = 0;
+		for(Element e : elements) {
+			Edge[] ed = e.flatNeighbours();
+			l.put(ed[0], k);
+			r.put(ed[1], k);
+			el[k] = ed[0];
+			er[k] = ed[1];
+			k++;
 		}
-		
-		double[][] dist = new double[l.size()][r.size()];
 		
 		for(int i = 0; i < l.size(); i++) {
 			for(int j = 0; j < r.size(); j++) {
-				dist[i][j] = l.get(i).distance(r.get(j));
+				dist[i][j] = el[i].distance(er[j]);
+			}
+		}
+		while(!l.isEmpty()) {
+			int[] match = bestMatch(l, r, dist, el, er);
+			
+			Edge e1 = el[match[0]];
+			Edge e2 = er[match[1]];
+			e1.merge(e2);
+			
+			l.remove(e1);
+			r.remove(e2);
+		}
+
+		Element anchor = this.elements.get(0);
+		computePosConnected(anchor, 0, 0, 0, new HashSet<Element>());
+		
+		Point min = new Point(0,0);
+		Point max = new Point(0,0);
+		
+		for(Element e : elements) {
+			if(e.position != null) {
+				double x = e.position.x;
+				double y = e.position.y;
+				if(x<min.x) min.x=x;
+				if(x>max.x) max.x=x;
+				if(y<min.y) min.y=y;
+				if(y>max.y) max.y=y;
+			}
+		}
+
+		for(Element e : elements) {
+			if(e.position != null) {
+				e.position.x -= min.x;
+				e.position.y -= min.y;
+			}
+		}
+		
+		solutionSize = new Size(max.x-min.x+1, max.y-min.y+1);
+	}
+	
+	private void solveInside(List<Element> inner) {
+		Element[][] sol = new Element[(int) solutionSize.width][(int) solutionSize.height];
+		for(Element el : elements) {
+			if(el.position != null)
+				sol[(int) el.position.x][(int) el.position.y] = el;
+		}
+		
+		
+		
+		for(int x = 1; x < (int) solutionSize.width-1; x++) {
+			for(int y = 1; y < (int) solutionSize.height-1; y++) {
+				Edge top = sol[x][y-1].edgeByDir(0);
+				Edge left = sol[x-1][y].edgeByDir(3);
+				
+				Element e = bestInner(top, left);
+				sol[x][y] = e;
+				e.position = new Point(x,y);
+			}
+		}
+	}
+	
+	Element bestInner(Edge top, Edge left) {
+		Element best = null;
+		int rotate = 0;
+		double minDist = Double.MAX_VALUE;
+		for(Element e: elements) {
+			if(e.position == null){
+				best = e;
+				break;
+			}
+		}
+		
+		for(Element e: elements) {
+			if(e.position != null)
+				continue;
+			for (int r = 0; r < 4; r++) {
+				e.rotate = r;
+				double d1 = e.edgeByDir(2).distance(top);
+				double d2 = e.edgeByDir(1).distance(left);
+				double d = d1+d2;
+				
+				if(d < minDist) {
+					best = e;
+					rotate = r;
+					minDist = d;
+				}
+			}
+		}
+
+		best.edgeByDir(2).merge(top);
+		best.edgeByDir(1).merge(left);
+		best.rotate = rotate;
+		
+		return best;
+	}
+	
+	private int[] bestMatch(Map<Edge, Integer> l, Map<Edge, Integer> r, double[][] dist, Edge[] el, Edge[] er) {
+		int[] ret = new int[2];
+		double min = Double.MAX_VALUE;
+		
+		for(Integer i : l.values()) {
+			for(Integer j : r.values()) {
+				double v = Double.MAX_VALUE;
+				if(el[i].parent.connected != er[j].parent.connected);
+					v = dist[i][j];
+				if(v < min) {
+					min = v;
+					ret[0] = i;
+					ret[1] = j;
+				}
+			}
+		}
+		return ret;
+	}
+
+	public void scramble() {
+		for(Element el : this.elements) {
+			for(Edge ed : el.edges) {
+				ed.connected = null;
+			}
+			el.connected = new HashSet<>();
+			el.connected.add(el);
+		}
+	}
+	
+	public List<Element> getCorners() {
+		List<Element> ret = new ArrayList<>();
+		for(Element el : this.elements) {
+			if(el.isCorner())
+				ret.add(el);
+		}
+		return ret;
+	}
+	
+	public Mat getSolution() {
+		
+		
+		Point min = new Point(0,0);
+		Point max = new Point(0,0);
+		
+		for(Element el : elements) {
+			if(el.position != null) {
+				double x = el.position.x;
+				double y = el.position.y;
+				if(x<min.x) min.x=x;
+				if(x>max.x) max.x=x;
+				if(y<min.y) min.y=y;
+				if(y>max.y) max.y=y;
+			}
+		}
+		
+		int pad = 400;
+		
+		Size size = new Size((max.x-min.x)*pad+pad, (max.y-min.y)*pad+pad);
+		
+		Mat canvas = Mat.zeros(size, CvType.CV_8UC3);
+		
+		for(Element el : elements) {
+			if(el.position != null) {
+				Mat adjusted = new Mat();
+				int maxDim = el.img.cols() > el.img.rows()? el.img.cols(): el.img.rows();
+				Mat M = Imgproc.getRotationMatrix2D(el.getCenter(), -(el.rotate+1)*90+el.tilt, 1.);
+				Imgproc.warpAffine(el.img, adjusted, M, new Size(maxDim,maxDim));
+				
+				Rect roi = new Rect((int)(-min.x+el.position.x)*pad, (int)(-min.y+el.position.y)*pad, adjusted.cols(), adjusted.rows());
+				adjusted.copyTo(canvas.submat(roi));
+			}
+		}
+		
+		return canvas;
+	}
+	
+	public void computePosConnected(Element e, int x, int y, int r, HashSet<Element> visited) {
+		if(visited.contains(e)) return;
+		visited.add(e);
+		e.position = new Point(x,y);
+		
+		e.rotate = r;
+
+		for(Edge ed : e.edges) {
+			int x1=0, y1=0, r1=0;
+			if(ed.connected != null) {
+				int dir = (4 + ed.no - r + 2) % 4;
+				r1 = (4+ ed.connected.no - dir) % 4;
+				switch(dir) {
+					case 0: x1=x; y1=y-1; break;
+					case 1: x1=x-1; y1=y; break;
+					case 2: x1=x; y1=y+1; break;
+					case 3: x1=x+1; y1=y; break;
+				}
+				computePosConnected(ed.connected.parent, x1, y1, r1, visited);
 			}
 		}
 	}
 }
+

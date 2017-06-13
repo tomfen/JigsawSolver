@@ -29,15 +29,11 @@
                 android:layout_weight="10"
                 android:padding="10dp">
 
-                <!---->
-                <!--<pt.jigsawsolver.Tmp-->
-                <!--android:layout_width="wrap_content"-->
-                <!--android:layout_height="wrap_content" />-->
-
-                <pt.jigsawsolver.SolverSurfaceView
+                <ImageView
                 android:id="@+id/livePreviewSolver"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"/>
+                android:layout_height="match_parent"
+                    android:src="@android:color/darker_gray"/>
             </FrameLayout>
 
             <LinearLayout
@@ -109,6 +105,13 @@
                     android:layout_weight="1"
                     android:background="@android:color/transparent"
                     android:src="@android:drawable/ic_menu_save" />
+                <ImageButton
+                    android:id="@+id/solveButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:src="@android:drawable/ic_menu_mapmode" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
