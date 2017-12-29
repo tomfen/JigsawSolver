@@ -96,8 +96,6 @@ public class JigsawFitter {
             threshold = threshold2 * 1.4;
         }
 
-        System.out.println("Threshold : "+threshold);
-
         for (int i = 0; i < matchesList.size(); i++)
         {
             Double dist = (double) matchesList.get(i).distance;
@@ -110,12 +108,8 @@ public class JigsawFitter {
 
         matchesFiltered.fromList(good_matches);
 
-        System.out.println("matchesFiltered.size() : " + matchesFiltered.size());
-
         if(matchesFiltered.rows() >= 4)
         {
-            System.out.println("match found");
-
             LinkedList<Point> objList = new LinkedList<Point>();
             LinkedList<Point> sceneList = new LinkedList<Point>();
 
@@ -157,11 +151,6 @@ public class JigsawFitter {
             }
 
         }
-        else
-        {
-            System.out.println("match not found");
-        }
-
 
         return img_scene;
     }

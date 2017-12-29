@@ -95,7 +95,6 @@ public class HintActivity extends Activity {
         cameraButton = (ImageButton) findViewById(R.id.cameraButton);
         galleryButton = (ImageButton) findViewById(R.id.galleryButton);
         saveButton = (ImageButton) findViewById(R.id.saveImgButton);
-        contourButton = (Button) findViewById(R.id.contourButton);
 
         photoView = (ImageView) findViewById(R.id.photoView);
         livePreview = (SurfaceView) findViewById(R.id.livePreview);
@@ -292,24 +291,7 @@ public class HintActivity extends Activity {
             }
         });
 
-        contourButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
 
-                /*try {
-                    photoView.buildDrawingCache();
-                    Bitmap bmap = photoView.getDrawingCache();
-                    color_picture(photoView, bmap);
-
-                } catch (Exception e) {
-                    Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
-                }*/
-
-                photoView.buildDrawingCache();
-                Bitmap bmap = photoView.getDrawingCache();
-                removeBackgroundFromPicture(photoView, bmap);
-                //setBlackBackground(photoView, bmap);
-            }
-        });
     }
 
     @Override
@@ -363,72 +345,4 @@ public class HintActivity extends Activity {
         pfd.close();
         return image;
     }
-
-    public static void color_picture(ImageView iv, Bitmap bmp) throws Exception {
-        Mat src = new Mat();
-        Utils.bitmapToMat(bmp, src);
-        Mat gray = new Mat();
-        Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2GRAY);
-
-        Imgproc.Canny(gray, gray, 50, 200);
-        List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
-        Mat hierarchy = new Mat();
-// find contours:
-        Imgproc.findContours(gray, contours, hierarchy, Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE);
-        for (int contourIdx = 0; contourIdx < contours.size(); contourIdx++) {
-            Imgproc.drawContours(src, contours, contourIdx, new Scalar(0, 0, 255), -1);
-        }
-// create a blank temp bitmap:
-        Bitmap tempBmp1 = Bitmap.createBitmap(bmp.getWidth(), bmp.getHeight(),
-                bmp.getConfig());
-
-        Mat tempMat = new Mat();
-        tempMat = gray;
-
-        Imgproc.cvtColor(gray, src, Imgproc.COLOR_GRAY2RGBA, 4);
-        //Imgproc.cvtColor(tempBmp1, tempBmp1, Imgproc.COLOR_GRAY2RGBA, 4);
-
-        Utils.matToBitmap(src, tempBmp1);
-        iv.setImageBitmap(tempBmp1);
-    }
-
-
-    public static void removeBackgroundFromPicture(ImageView iv, Bitmap bmp) {
-        Mat src = new Mat();
-        Utils.bitmapToMat(bmp, src);
-        Mat dst = new Mat(src.rows(), src.cols(), CvType.CV_8UC3);
-        dst.setTo(new Scalar(0, 0, 0, 0));
-        Mat tmp = new Mat();
-        Mat alpha = new Mat();
-
-        Imgproc.cvtColor(src, tmp, Imgproc.COLOR_BGR2GRAY);
-        threshold(tmp, alpha, 150, 255, THRESH_BINARY);
-
-        List<Mat> rgb = new ArrayList<Mat>(3);
-        Core.split(src, rgb);
-
-        //List<Mat> rgba = Arrays.asList(dst, dst, dst, alpha);
-        List<Mat> rgba = Arrays.asList(rgb.get(0), rgb.get(1), rgb.get(2), alpha);
-        Core.merge(rgba, dst);
-
-        Log.d("RGBA: ", rgb.get(0).toString() + " " + rgb.get(1).toString() + " " + rgb.get(2).toString()
-                + " " + alpha.toString());
-
-        Bitmap tempBmp1 = Bitmap.createBitmap(bmp.getWidth(), bmp.getHeight(),
-                bmp.getConfig());
-
-
-        Utils.matToBitmap(dst, tempBmp1);
-        int [] allpixels = new int [tempBmp1.getHeight() * tempBmp1.getWidth()];
-        tempBmp1.getPixels(allpixels, 0, tempBmp1.getWidth(), 0, 0, tempBmp1.getWidth(), tempBmp1.getHeight());
-        for(int i = 0; i < allpixels.length; i++)
-        {
-            if (Color.alpha(allpixels[i]) == 0)
-            allpixels[i] = Color.BLACK;
-        }
-
-        tempBmp1.setPixels(allpixels, 0, tempBmp1.getWidth(), 0, 0, tempBmp1.getWidth(), tempBmp1.getHeight());
-        iv.setImageBitmap(tempBmp1);
-    }
-
 }

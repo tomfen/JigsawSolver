@@ -55,6 +55,7 @@ public class SolverActivity extends Activity {
 
     Uri uriSavedImage;
     InterstitialAd interstitial;
+    AdRequest adRequest;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,12 +70,12 @@ public class SolverActivity extends Activity {
 
         photoView = (ImageView) findViewById(R.id.photoViewSolver);
         livePreview = (ImageView) findViewById(R.id.livePreviewSolver);
-        holder = livePreview.getHolder();
+
 
         try {
             interstitial = new InterstitialAd(this);
-            interstitial.setAdUnitId("ca-app-pub-3940256099942544/1033173712");
-            AdRequest adRequest = new AdRequest.Builder()
+            interstitial.setAdUnitId("ca-app-pub-3940256099942544/1072772517");//ca-app-pub-3940256099942544/1033173712");
+            adRequest = new AdRequest.Builder()
                     .addTestDevice(AdRequest.DEVICE_ID_EMULATOR)
                     .addTestDevice("91456216E0ECFE6F9134D159BFC820A8")
                     .build();
@@ -82,58 +83,14 @@ public class SolverActivity extends Activity {
                 @Override
                 public void onAdLoaded() {
                     super.onAdLoaded();
-                    interstitial.show();
                 }
             });
             interstitial.loadAd(adRequest);
+
         } catch (Exception e) {
             e.equals(e);
         }
 
-
-        //Camera
-        holder.addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder holder) {
-              // Canvas canvas = holder.lockCanvas();
-
-            }
-
-            @Override
-            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-
-            }
-
-            @Override
-            public void surfaceDestroyed(SurfaceHolder holder) {
-
-            }
-
-        });
-
-          mPicture = new Camera.PictureCallback() {
-
-            @Override
-            public void onPictureTaken(byte[] data, Camera camera) {
-
-                try {
-                    Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
-
-                    FileOutputStream outStream = null;
-                    String filepath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/savedimg.jpeg";
-                    File f = new File(filepath);
-                    outStream = new FileOutputStream(f);
-                    bmp.compress(Bitmap.CompressFormat.JPEG, 100, outStream);
-                    outStream.flush();
-                    outStream.close();
-                   // photoView.setImageBitmap(bmp);
-                    Toast.makeText(getApplicationContext(), R.string.image_saved, Toast.LENGTH_LONG).show();
-
-                } catch (Exception e) {
-                    Toast.makeText(getApplicationContext(), R.string.error, Toast.LENGTH_LONG).show();
-                }
-            }
-        };
 
         //Turn on camera
         cameraButton.setOnClickListener(new View.OnClickListener(){
@@ -259,8 +216,13 @@ public class SolverActivity extends Activity {
 
         solveButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
+                try{
+                    interstitial.show();
+                    Thread.sleep(50);
+                } catch(Exception e){}
 
                 try {
+
                     BitmapDrawable bd = (BitmapDrawable) livePreview.getDrawable();
                     Bitmap bm = bd.getBitmap();
 

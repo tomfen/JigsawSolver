@@ -338,8 +338,6 @@ public class JigsawSolver {
 			Element el = this.new Element(id++, croppedElement, cont);
 			this.elements.add(el);
 	    }
-	    
-	    
 	 }
 	
 	public void saveElements(String dir) {
@@ -368,6 +366,8 @@ public class JigsawSolver {
 		for (Element e : this.elements) {
 			if(e.isCorner() || e.isBorder())
 				borders.add(e);
+            else
+                inner.add(e);
 		}
 		
 		solveBorder(borders);
@@ -383,7 +383,7 @@ public class JigsawSolver {
 		
 		int k = 0;
 		for(Element e : elements) {
-			Edge[] ed = e.flatNeighbours();
+			Edge[] ed = e.flatNeighbours(); // zwraca krawędzie będące "sąsiadami" płaskich
 			l.put(ed[0], k);
 			r.put(ed[1], k);
 			el[k] = ed[0];
